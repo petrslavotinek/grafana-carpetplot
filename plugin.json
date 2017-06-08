@@ -1,0 +1,16 @@
+{
+  "type": "panel",
+  "name": "Carpet plot",
+  "id": "carpetplot",
+
+  "info": {
+    "author": {
+      "name": "ENESA a.s.",
+      "url": "http://www.enesa.cz"
+    },
+    "logos": {
+      "small": "src/img/logo.svg",
+      "large": "src/img/logo.svg"
+    }
+  }
+}
