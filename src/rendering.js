@@ -1,11 +1,14 @@
 import d3 from 'd3';
 import _ from 'lodash';
-import { contextSrv } from 'app/core/core';
+import { appEvents, contextSrv } from 'app/core/core';
 import { tickStep } from 'app/core/utils/ticks';
+import moment from 'moment';
+
+import { getFragment } from './fragments';
 
 const
   DEFAULT_X_TICK_SIZE_PX = 100,
-  X_AXIS_TICK_PADDING = 10,
+  X_AXIS_TICK_MIN_SIZE = 100,
   Y_AXIS_TICK_PADDING = 5,
   MIN_SELECTION_WIDTH = 2;
 
@@ -15,15 +18,22 @@ export default function link(scope, elem, attrs, ctrl) {
   const $carpet = elem.find('.carpetplot-panel');
 
   // const padding = { left: 0, right: 0, top: 0, bottom: 0 };
-  const margin = { left: 25, right: 15, top: 10, bottom: 20 };
+  const margin = { left: 25, right: 15, top: 10, bottom: 65 };
 
   let width, height,
     min, max,
+    xFrom, xTo, days,
     chartHeight, chartWidth,
     chartTop, chartBottom,
     xAxisHeight, yAxisWidth,
     yScale, xScale,
-    colorScale;
+    colorScale, fragment;
+
+  const selection = {
+    active: false,
+    x1: -1,
+    x2: -1
+  };
 
   ctrl.events.on('render', () => {
     render();
@@ -39,7 +49,7 @@ export default function link(scope, elem, attrs, ctrl) {
     [min, max] = getMinMax();
     colorScale = getColorScale(min, max);
 
-
+    addPoints(colorScale);
   }
 
   function addCarpetplotCanvas() {
@@ -78,24 +88,13 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function addYAxis() {
-    const yMin = 24;
-    const yMax = 0;
-    const ticks = 6;
-    const tickInterval = tickStep(yMin, yMax, ticks);
-
-    data.yAxis = {
-      min: yMin,
-      max: yMax,
-      ticks: ticks
-    };
-
-    scope.yScale = yScale = d3.scaleLinear()
-      .domain([yMin, yMax])
+    scope.yScale = yScale = d3.scaleTime()
+      .domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')])
       .range([chartHeight, 0]);
 
     const yAxis = d3.axisLeft(yScale)
-      .ticks(ticks)
-      .tickFormat((value) => `${value.toString().padStart(2, '0')}:00`)
+      .ticks(d3.timeHour.every(4))
+      .tickFormat((value) => moment(value).format('HH:mm'))
       .tickSizeInner(0 - width)
       .tickSizeOuter(0)
       .tickPadding(Y_AXIS_TICK_PADDING);
@@ -113,18 +112,23 @@ export default function link(scope, elem, attrs, ctrl) {
     yAxisGroup.selectAll('.tick line').remove();
   }
 
+  function getYAxisWidth() {
+    const axisText = carpet.selectAll('.axis-y text').nodes();
+    return d3.max(axisText, (text) => $(text).outerWidth());
+  }
+
   function addXAxis() {
+    xFrom = moment(data.from.local()).startOf('day');
+    xTo = moment(data.to.local()).startOf('day');
+    days = xTo.diff(xFrom, 'days');
+
     scope.xScale = xScale = d3.scaleTime()
-      .domain([timeRange.from, timeRange.to])
+      .domain([xFrom, xTo])
       .range([0, chartWidth]);
 
-    const ticks = chartWidth / DEFAULT_X_TICK_SIZE_PX;
-    const grafanaTimeFormatter = grafanaTimeFormat(ticks, timeRange.from, timeRange.to);
-
     const xAxis = d3.axisBottom(xScale)
-      .ticks(ticks)
-      .tickFormat(d3.timeFormat(grafanaTimeFormatter))
-      .tickPadding(X_AXIS_TICK_PADDING)
+      .ticks(getXAxisTicks(xFrom, xTo))
+      .tickFormat(d3.timeFormat('%a %m/%d'))
       .tickSize(chartHeight);
 
     const posY = margin.top;
@@ -132,14 +136,15 @@ export default function link(scope, elem, attrs, ctrl) {
     carpet.append('g')
       .attr('class', 'axis axis-x')
       .attr('transform', `translate(${posX},${posY})`)
-      .call(xAxis);
+      .call(xAxis)
+      .selectAll('text')
+      .style('text-anchor', 'end')
+      .attr('dx', '-.8em')
+      .attr('dy', '.15em')
+      .attr('y', 0)
+      .attr('transform', `translate(5,${posY + chartHeight - 10}) rotate(-65)`);
 
     carpet.select('.axis-x').select('.domain').remove();
-  }
-
-  function getYAxisWidth() {
-    const axisText = carpet.selectAll('.axis-y text').nodes();
-    return d3.max(axisText, (text) => $(text).outerWidth());
   }
 
   function getXAxisHeight() {
@@ -152,6 +157,49 @@ export default function link(scope, elem, attrs, ctrl) {
       // Default height
       return 30;
     }
+  }
+
+  function getXAxisTicks(from, to) {
+    const count = chartWidth / X_AXIS_TICK_MIN_SIZE;
+    const step = Math.ceil(days / count);
+    if (step < 7) {
+      return d3.timeDay.every(step);
+    }
+    if (step < 28) {
+      return d3.timeWeek.every(Math.floor(step / 7));
+    }
+    return d3.timeMonth.every(1);
+  }
+
+  function addPoints(colorScale) {
+    const container = carpet.insert('g', ':first-child')
+      .attr('class', 'carpet-container')
+      .attr('transform', `translate(${yAxisWidth},${margin.top})`);
+
+    const cols = container
+      .selectAll('.carpet-col')
+      .data(data.data)
+      .enter()
+      .append('g')
+      .attr('transform', (day) => `translate(${xScale(day.time.toDate())},0)`);
+
+    const width = chartWidth / days;
+    const height = chartHeight / fragment.count;
+    const pointScale = d3.scaleLinear()
+      .domain([24, 0])
+      .range([chartHeight, 0])
+
+    const points = cols
+      .selectAll('.carpet-point')
+      .data((d, i) => d.buckets)
+      .enter()
+      .append('rect')
+      .attr('fill', value => value === null ? panel.color.nullColor : colorScale(value))
+      .attr('x', 0)
+      .attr('y', (d, i) => pointScale(i))
+      .attr('width', width)
+      .attr('height', height)
+      .attr('title', (d, i) => `${i}: ${d}`);
   }
 
   function getMinMax() {
@@ -179,38 +227,124 @@ export default function link(scope, elem, attrs, ctrl) {
     return prop !== undefined && prop !== null && prop !== '';
   }
 
+  // Selection, Crosshair, Tooltip
+  // appEvents.on('graph-hover', event => {
+  //   drawSharedCrosshair(event.pos);
+  // }, scope);
+
+  // appEvents.on('graph-hover-clear', () => {
+  //   clearCrosshair();
+  // }, scope);
+
+  function onMouseDown(event) {
+    // selection.active = true;
+    // selection.x1 = event.offsetX;
+
+    // mouseUpHandler = function () {
+    //   onMouseUp();
+    // };
+
+    // $(document).one("mouseup", mouseUpHandler);
+  }
+
+  function onMouseUp() {
+    // $(document).unbind("mouseup", mouseUpHandler);
+    // mouseUpHandler = null;
+    // selection.active = false;
+
+    // let selectionRange = Math.abs(selection.x2 - selection.x1);
+    // if (selection.x2 >= 0 && selectionRange > MIN_SELECTION_WIDTH) {
+    //   let timeFrom = xScale.invert(Math.min(selection.x1, selection.x2) - yAxisWidth);
+    //   let timeTo = xScale.invert(Math.max(selection.x1, selection.x2) - yAxisWidth);
+
+    //   ctrl.timeSrv.setTime({
+    //     from: moment.utc(timeFrom),
+    //     to: moment.utc(timeTo)
+    //   });
+    // }
+
+    // clearSelection();
+  }
+
+  function onMouseLeave() {
+    // appEvents.emit('graph-hover-clear');
+    clearCrosshair();
+  }
+
+  function onMouseMove(event) {
+    if (!carpet) { return; }
+
+    if (selection.active) {
+      clearCrosshair();
+      // tooltip.destroy();
+
+      selection.x2 = limitSelection(event.offsetX);
+      drawSelection(selection.x1, selection.x2);
+    } else {
+      drawCrosshair(event.offsetX);
+      // tooltip.show(event, data);
+    }
+  }
+
+  function drawCrosshair(position) {
+    if (!carpet) { return; }
+
+    carpet.selectAll(".heatmap-crosshair").remove();
+
+    let posX = position;
+    posX = Math.max(posX, yAxisWidth);
+    posX = Math.min(posX, chartWidth + yAxisWidth);
+
+    carpet.append("g")
+      .attr("class", "heatmap-crosshair")
+      .attr("transform", "translate(" + posX + ",0)")
+      .append("line")
+      .attr("x1", 1)
+      .attr("y1", chartTop)
+      .attr("x2", 1)
+      .attr("y2", chartBottom)
+      .attr("stroke-width", 1);
+
+  }
+
+  // function drawSharedCrosshair(pos) {
+  //   if (!carpet || ctrl.dashboard.graphTooltip === 0) { return; }
+
+  //   const posX = xScale(pos.x) + yAxisWidth;
+  //   drawCrosshair(posX);
+  // }
+
+  function clearCrosshair() {
+    if (!carpet) { return; }
+
+    carpet.selectAll(".heatmap-crosshair").remove();
+  }
+
+  function limitSelection(x2) {
+    x2 = Math.max(x2, yAxisWidth);
+    x2 = Math.min(x2, chartWidth + yAxisWidth);
+    return x2;
+  }
+
+  function drawSelection(posX1, posX2) {
+    // TODO
+  }
+
+  // Render
+
   function render() {
     data = ctrl.data;
     panel = ctrl.panel;
     timeRange = ctrl.range;
 
+    fragment = getFragment(panel.fragment);
+
     console.log(data)
 
     addCarpetplot();
   }
-}
 
-function grafanaTimeFormat(ticks, min, max) {
-  if (min && max && ticks) {
-    const range = max - min;
-    const secPerTick = (range / ticks) / 1000;
-    const oneDay = 86400000;
-    const oneYear = 31536000000;
-
-    if (secPerTick <= 45) {
-      return '%H:%M:%S';
-    }
-    if (secPerTick <= 7200 || range <= oneDay) {
-      return '%H:%M';
-    }
-    if (secPerTick <= 80000) {
-      return '%m/%d %H:%M';
-    }
-    if (secPerTick <= 2419200 || range <= oneYear) {
-      return '%m/%d';
-    }
-    return '%Y-%m';
-  }
-
-  return '%H:%M';
+  $carpet.on("mousedown", onMouseDown);
+  $carpet.on("mousemove", onMouseMove);
+  $carpet.on("mouseleave", onMouseLeave);
 }

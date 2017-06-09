@@ -56,9 +56,17 @@ module.exports = (grunt) => {
       },
     },
 
+    sass: {
+      dist: {
+        files: {
+          'dist/css/carpet-plot.css': 'src/css/carpet-plot.scss'
+        }
+      }
+    }
+
   });
 
-  grunt.registerTask('default', ['clean', 'copy:src_to_dist', 'copy:pluginDef', 'copy:img_to_dist', 'babel']);
+  grunt.registerTask('default', ['clean', 'copy:src_to_dist', 'copy:pluginDef', 'copy:img_to_dist', 'babel', 'sass']);
   // grunt.registerTask('clean', ['clean']);
   // grunt.registerTask('watch', ['watch']);
 };

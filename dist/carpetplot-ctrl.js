@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['app/plugins/sdk', 'lodash', './data-converter', './aggregates', './fragments', './rendering', './css/carpet-plot.css!'], function (_export, _context) {
+System.register(['app/plugins/sdk', 'lodash', 'app/core/core', './data-converter', './aggregates', './fragments', './rendering', './css/carpet-plot.css!'], function (_export, _context) {
   "use strict";
 
-  var MetricsPanelCtrl, _, createConverter, aggregates, fragments, rendering, _createClass, panelDefaults, colorSchemes, CarpetPlotCtrl;
+  var MetricsPanelCtrl, _, contextSrv, createConverter, aggregates, fragments, rendering, _createClass, panelDefaults, colorSchemes, CarpetPlotCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -40,6 +40,8 @@ System.register(['app/plugins/sdk', 'lodash', './data-converter', './aggregates'
       MetricsPanelCtrl = _appPluginsSdk.MetricsPanelCtrl;
     }, function (_lodash) {
       _ = _lodash.default;
+    }, function (_appCoreCore) {
+      contextSrv = _appCoreCore.contextSrv;
     }, function (_dataConverter) {
       createConverter = _dataConverter.default;
     }, function (_aggregates) {
@@ -72,7 +74,8 @@ System.register(['app/plugins/sdk', 'lodash', './data-converter', './aggregates'
         aggregate: aggregates.AVG,
         fragment: fragments.HOUR,
         color: {
-          colorScheme: 'interpolateRdYlGn'
+          colorScheme: 'interpolateRdYlGn',
+          nullColor: 'transparent'
         },
         scale: {
           min: null,
@@ -112,6 +115,7 @@ System.register(['app/plugins/sdk', 'lodash', './data-converter', './aggregates'
           _this.data = {};
           _this.timeSrv = timeSrv;
           _this.colorSchemes = colorSchemes;
+          _this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
           _.defaultsDeep(_this.panel, panelDefaults);
 

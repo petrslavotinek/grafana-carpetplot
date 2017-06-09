@@ -1,5 +1,6 @@
 import { MetricsPanelCtrl } from 'app/plugins/sdk';
 import _ from 'lodash';
+import { contextSrv } from 'app/core/core';
 
 import createConverter from './data-converter';
 import aggregates from './aggregates';
@@ -11,7 +12,8 @@ const panelDefaults = {
   aggregate: aggregates.AVG,
   fragment: fragments.HOUR,
   color: {
-    colorScheme: 'interpolateRdYlGn'
+    colorScheme: 'interpolateRdYlGn',
+    nullColor: 'transparent'
   },
   scale: {
     min: null,
@@ -56,6 +58,7 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
     this.data = {};
     this.timeSrv = timeSrv;
     this.colorSchemes = colorSchemes;
+    this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
     _.defaultsDeep(this.panel, panelDefaults);
 
