@@ -2,6 +2,8 @@
   cursor: crosshair; }
   .carpetplot-panel .tick text {
     font-size: .875rem; }
+  .carpetplot-panel .carpet-selection {
+    opacity: 0.5; }
 
 .carpetplot-wrapper.light .carpetplot-panel .tick text {
   fill: #1F1D1D;

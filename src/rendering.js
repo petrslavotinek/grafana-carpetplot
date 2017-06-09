@@ -27,7 +27,9 @@ export default function link(scope, elem, attrs, ctrl) {
     chartTop, chartBottom,
     xAxisHeight, yAxisWidth,
     yScale, xScale,
-    colorScale, fragment;
+    colorScale, fragment,
+    mouseUpHandler,
+    originalPointColor;
 
   const selection = {
     active: false,
@@ -194,12 +196,37 @@ export default function link(scope, elem, attrs, ctrl) {
       .data((d, i) => d.buckets)
       .enter()
       .append('rect')
+      .attr('class', 'carpet-point')
       .attr('fill', value => value === null ? panel.color.nullColor : colorScale(value))
       .attr('x', 0)
       .attr('y', (d, i) => pointScale(i))
       .attr('width', width)
       .attr('height', height)
       .attr('title', (d, i) => `${i}: ${d}`);
+
+    const $points = $carpet.find('.carpet-point');
+    $points
+      .on('mouseenter', (event) => {
+        // tooltip.mouseOverBucket = true;
+        highlightPoint(event);
+      })
+      .on('mouseleave', (event) => {
+        // tooltip.mouseOverBucket = false;
+        resetPointHighLight(event);
+      });
+  }
+
+  function highlightPoint(event) {
+    const color = d3.select(event.target).style('fill');
+    const highlightColor = d3.color(color).darker(1);
+    const currentPoint = d3.select(event.target);
+    originalPointColor = color;
+    currentPoint.style('fill', highlightColor);
+  }
+
+  function resetPointHighLight(event) {
+    d3.select(event.target)
+      .style('fill', originalPointColor);
   }
 
   function getMinMax() {
@@ -237,33 +264,32 @@ export default function link(scope, elem, attrs, ctrl) {
   // }, scope);
 
   function onMouseDown(event) {
-    // selection.active = true;
-    // selection.x1 = event.offsetX;
+    selection.active = true;
+    selection.x1 = event.offsetX;
 
-    // mouseUpHandler = function () {
-    //   onMouseUp();
-    // };
+    mouseUpHandler = () => onMouseUp();
 
-    // $(document).one("mouseup", mouseUpHandler);
+    $(document).one('mouseup', mouseUpHandler);
   }
 
   function onMouseUp() {
-    // $(document).unbind("mouseup", mouseUpHandler);
-    // mouseUpHandler = null;
-    // selection.active = false;
+    $(document).unbind('mouseup', mouseUpHandler);
+    mouseUpHandler = null;
+    selection.active = false;
 
-    // let selectionRange = Math.abs(selection.x2 - selection.x1);
-    // if (selection.x2 >= 0 && selectionRange > MIN_SELECTION_WIDTH) {
-    //   let timeFrom = xScale.invert(Math.min(selection.x1, selection.x2) - yAxisWidth);
-    //   let timeTo = xScale.invert(Math.max(selection.x1, selection.x2) - yAxisWidth);
+    const selectionRange = Math.abs(selection.x2 - selection.x1);
 
-    //   ctrl.timeSrv.setTime({
-    //     from: moment.utc(timeFrom),
-    //     to: moment.utc(timeTo)
-    //   });
-    // }
+    if (selection.x2 >= 0 && selectionRange > MIN_SELECTION_WIDTH) {
+      const timeFrom = xScale.invert(Math.min(selection.x1, selection.x2) - yAxisWidth);
+      const timeTo = xScale.invert(Math.max(selection.x1, selection.x2) - yAxisWidth);
 
-    // clearSelection();
+      ctrl.timeSrv.setTime({
+        from: moment.utc(timeFrom),
+        to: moment.utc(timeTo)
+      });
+    }
+
+    clearSelection();
   }
 
   function onMouseLeave() {
@@ -289,21 +315,21 @@ export default function link(scope, elem, attrs, ctrl) {
   function drawCrosshair(position) {
     if (!carpet) { return; }
 
-    carpet.selectAll(".heatmap-crosshair").remove();
+    carpet.selectAll('.heatmap-crosshair').remove();
 
     let posX = position;
     posX = Math.max(posX, yAxisWidth);
     posX = Math.min(posX, chartWidth + yAxisWidth);
 
-    carpet.append("g")
-      .attr("class", "heatmap-crosshair")
-      .attr("transform", "translate(" + posX + ",0)")
-      .append("line")
-      .attr("x1", 1)
-      .attr("y1", chartTop)
-      .attr("x2", 1)
-      .attr("y2", chartBottom)
-      .attr("stroke-width", 1);
+    carpet.append('g')
+      .attr('class', 'heatmap-crosshair')
+      .attr('transform', 'translate(' + posX + ',0)')
+      .append('line')
+      .attr('x1', 1)
+      .attr('y1', chartTop)
+      .attr('x2', 1)
+      .attr('y2', chartBottom)
+      .attr('stroke-width', 1);
 
   }
 
@@ -317,7 +343,7 @@ export default function link(scope, elem, attrs, ctrl) {
   function clearCrosshair() {
     if (!carpet) { return; }
 
-    carpet.selectAll(".heatmap-crosshair").remove();
+    carpet.selectAll('.heatmap-crosshair').remove();
   }
 
   function limitSelection(x2) {
@@ -327,7 +353,30 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function drawSelection(posX1, posX2) {
-    // TODO
+    if (!carpet) { return; }
+
+    carpet.selectAll('.carpet-selection').remove();
+    const selectionX = Math.min(posX1, posX2);
+    const selectionWidth = Math.abs(posX1 - posX2);
+
+    if (selectionWidth > MIN_SELECTION_WIDTH) {
+      carpet.append('rect')
+        .attr('class', 'carpet-selection')
+        .attr('x', selectionX)
+        .attr('width', selectionWidth)
+        .attr('y', chartTop)
+        .attr('height', chartHeight);
+    }
+  }
+
+  function clearSelection() {
+    selection.x1 = -1;
+    selection.x2 = -1;
+
+    if (!carpet) { return; }
+
+    carpet.selectAll('.carpet-selection').remove();
+
   }
 
   // Render
@@ -344,7 +393,7 @@ export default function link(scope, elem, attrs, ctrl) {
     addCarpetplot();
   }
 
-  $carpet.on("mousedown", onMouseDown);
-  $carpet.on("mousemove", onMouseMove);
-  $carpet.on("mouseleave", onMouseLeave);
+  $carpet.on('mousedown', onMouseDown);
+  $carpet.on('mousemove', onMouseMove);
+  $carpet.on('mouseleave', onMouseLeave);
 }
