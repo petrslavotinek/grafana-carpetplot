@@ -1,11 +1,13 @@
 import { MetricsPanelCtrl } from 'app/plugins/sdk';
 import _ from 'lodash';
 import { contextSrv } from 'app/core/core';
+import kbn from 'app/core/utils/kbn';
 
 import createConverter from './data-converter';
 import aggregates from './aggregates';
 import fragments from './fragments';
 import rendering from './rendering';
+import { carpetplotOptionsEditor } from './options-editor';
 import './css/carpet-plot.css!';
 
 const panelDefaults = {
@@ -18,6 +20,13 @@ const panelDefaults = {
   scale: {
     min: null,
     max: null
+  },
+  yAxis: {
+    format: 'short'
+  },
+  tooltip: {
+    show: true,
+    decimals: null
   }
 };
 
@@ -49,32 +58,61 @@ const colorSchemes = [
   { name: 'YlOrRd', value: 'interpolateYlOrRd', invert: 'darm' }
 ];
 
+const fragmentOptions = [
+  { name: 'Minute', value: fragments.MINUTE },
+  { name: '15 minutes', value: fragments.QUARTER },
+  { name: 'Hour', value: fragments.HOUR }
+];
+
+const aggregateOptions = [
+  { name: 'Average', value: aggregates.AVG },
+  { name: 'Sum', value: aggregates.SUM },
+  { name: 'Count', value: aggregates.CNT },
+];
+
 export class CarpetPlotCtrl extends MetricsPanelCtrl {
   static templateUrl = 'module.html';
 
   constructor($scope, $injector, $rootScope, timeSrv) {
     super($scope, $injector);
 
+    this.dataList = null;
     this.data = {};
     this.timeSrv = timeSrv;
     this.colorSchemes = colorSchemes;
+    this.fragmentOptions = fragmentOptions;
+    this.aggregateOptions = aggregateOptions;
     this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
     _.defaultsDeep(this.panel, panelDefaults);
 
     this.events.on('data-received', this.onDataReceived);
     this.events.on('data-snapshot-load', this.onDataReceived);
+    this.events.on('init-edit-mode', this.onInitEditMode);
+    this.events.on('render', this.onRender);
   }
 
   onDataReceived = (dataList) => {
-    // TODO - dynamic params
-    const converter = createConverter(this.panel.aggregate, this.panel.fragment);
-    const { from, to } = this.timeSrv.timeRange();
-    this.data = converter.convertData(from, to, dataList);
+    this.dataList = dataList;
+    this.data = this.transformData(dataList);
     this.render();
   }
 
+  onInitEditMode = () => {
+    this.addEditorTab('Options', carpetplotOptionsEditor, 2);
+    this.unitFormats = kbn.getUnitFormats();
+  }
 
+  onRender = () => {
+    if (!this.dataList) { return; }
+    this.data = this.transformData(this.dataList);
+  }
+
+  transformData(data) {
+    const converter = createConverter(this.panel.aggregate, this.panel.fragment);
+    const { from, to } = this.timeSrv.timeRange();
+    return converter.convertData(from, to, data);
+  }
 
   link(scope, elem, attrs, ctrl) {
     rendering(scope, elem, attrs, ctrl);

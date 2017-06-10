@@ -5,6 +5,7 @@ import { tickStep } from 'app/core/utils/ticks';
 import moment from 'moment';
 
 import { getFragment } from './fragments';
+import CarpetplotTooltip from './tooltip';
 
 const
   DEFAULT_X_TICK_SIZE_PX = 100,
@@ -16,8 +17,8 @@ export default function link(scope, elem, attrs, ctrl) {
   let data, panel, timeRange, carpet;
 
   const $carpet = elem.find('.carpetplot-panel');
+  const tooltip = new CarpetplotTooltip($carpet, scope);
 
-  // const padding = { left: 0, right: 0, top: 0, bottom: 0 };
   const margin = { left: 25, right: 15, top: 10, bottom: 65 };
 
   let width, height,
@@ -187,8 +188,9 @@ export default function link(scope, elem, attrs, ctrl) {
 
     const width = chartWidth / days;
     const height = chartHeight / fragment.count;
+
     const pointScale = d3.scaleLinear()
-      .domain([24, 0])
+      .domain([fragment.count, 0])
       .range([chartHeight, 0])
 
     const points = cols
@@ -207,11 +209,11 @@ export default function link(scope, elem, attrs, ctrl) {
     const $points = $carpet.find('.carpet-point');
     $points
       .on('mouseenter', (event) => {
-        // tooltip.mouseOverBucket = true;
+        tooltip.mouseOverPoint = true;
         highlightPoint(event);
       })
       .on('mouseleave', (event) => {
-        // tooltip.mouseOverBucket = false;
+        tooltip.mouseOverPoint = false;
         resetPointHighLight(event);
       });
   }
@@ -302,13 +304,13 @@ export default function link(scope, elem, attrs, ctrl) {
 
     if (selection.active) {
       clearCrosshair();
-      // tooltip.destroy();
+      tooltip.destroy();
 
       selection.x2 = limitSelection(event.offsetX);
       drawSelection(selection.x1, selection.x2);
     } else {
       drawCrosshair(event.offsetX);
-      // tooltip.show(event, data);
+      tooltip.show(event, data);
     }
   }
 
@@ -376,7 +378,30 @@ export default function link(scope, elem, attrs, ctrl) {
     if (!carpet) { return; }
 
     carpet.selectAll('.carpet-selection').remove();
+  }
 
+  function drawColorLegend() {
+    d3.select("#heatmap-color-legend").selectAll("rect").remove();
+
+    const legend = d3.select("#heatmap-color-legend");
+    const legendWidth = Math.floor($(d3.select("#heatmap-color-legend").node()).outerWidth());
+    const legendHeight = d3.select("#heatmap-color-legend").attr("height");
+
+    const legendColorScale = getColorScale(0, legendWidth);
+
+    const rangeStep = 2;
+    const valuesRange = d3.range(0, legendWidth, rangeStep);
+    const legendRects = legend.selectAll(".heatmap-color-legend-rect").data(valuesRange);
+
+    legendRects.enter().append("rect")
+      .attr("x", d => d)
+      .attr("y", 0)
+      .attr("width", rangeStep + 1) // Overlap rectangles to prevent gaps
+      .attr("height", legendHeight)
+      .attr("stroke-width", 0)
+      .attr("fill", d => {
+        return legendColorScale(d);
+      });
   }
 
   // Render
@@ -388,9 +413,19 @@ export default function link(scope, elem, attrs, ctrl) {
 
     fragment = getFragment(panel.fragment);
 
-    console.log(data)
+    if (!d3.select("#heatmap-color-legend").empty()) {
+      drawColorLegend();
+    }
 
     addCarpetplot();
+
+    scope.yAxisWidth = yAxisWidth;
+    scope.xAxisHeight = xAxisHeight;
+    scope.chartHeight = chartHeight;
+    scope.chartWidth = chartWidth;
+    scope.chartTop = chartTop;
+    scope.fragment = fragment;
+    scope.xFrom = xFrom;
   }
 
   $carpet.on('mousedown', onMouseDown);

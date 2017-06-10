@@ -16,5 +16,7 @@ export const aggregate = (type) => {
 };
 
 export default {
-  AVG
+  AVG,
+  SUM,
+  CNT
 };

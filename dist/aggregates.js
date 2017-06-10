@@ -51,7 +51,9 @@ System.register([], function (_export, _context) {
       _export('aggregate', aggregate);
 
       _export('default', {
-        AVG: AVG
+        AVG: AVG,
+        SUM: SUM,
+        CNT: CNT
       });
     }
   };

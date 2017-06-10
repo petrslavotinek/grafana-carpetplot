@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', './fragments'], function (_export, _context) {
+System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', './fragments', './tooltip'], function (_export, _context) {
   "use strict";
 
-  var d3, _, appEvents, contextSrv, tickStep, moment, getFragment, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, MIN_SELECTION_WIDTH;
+  var d3, _, appEvents, contextSrv, tickStep, moment, getFragment, CarpetplotTooltip, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, MIN_SELECTION_WIDTH;
 
   function link(scope, elem, attrs, ctrl) {
     var data = void 0,
@@ -12,8 +12,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         carpet = void 0;
 
     var $carpet = elem.find('.carpetplot-panel');
+    var tooltip = new CarpetplotTooltip($carpet, scope);
 
-    // const padding = { left: 0, right: 0, top: 0, bottom: 0 };
     var margin = { left: 25, right: 15, top: 10, bottom: 65 };
 
     var width = void 0,
@@ -173,7 +173,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       var width = chartWidth / days;
       var height = chartHeight / fragment.count;
-      var pointScale = d3.scaleLinear().domain([24, 0]).range([chartHeight, 0]);
+
+      var pointScale = d3.scaleLinear().domain([fragment.count, 0]).range([chartHeight, 0]);
 
       var points = cols.selectAll('.carpet-point').data(function (d, i) {
         return d.buckets;
@@ -187,10 +188,10 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       var $points = $carpet.find('.carpet-point');
       $points.on('mouseenter', function (event) {
-        // tooltip.mouseOverBucket = true;
+        tooltip.mouseOverPoint = true;
         highlightPoint(event);
       }).on('mouseleave', function (event) {
-        // tooltip.mouseOverBucket = false;
+        tooltip.mouseOverPoint = false;
         resetPointHighLight(event);
       });
     }
@@ -282,13 +283,13 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       if (selection.active) {
         clearCrosshair();
-        // tooltip.destroy();
+        tooltip.destroy();
 
         selection.x2 = limitSelection(event.offsetX);
         drawSelection(selection.x1, selection.x2);
       } else {
         drawCrosshair(event.offsetX);
-        // tooltip.show(event, data);
+        tooltip.show(event, data);
       }
     }
 
@@ -352,6 +353,27 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       carpet.selectAll('.carpet-selection').remove();
     }
 
+    function drawColorLegend() {
+      d3.select("#heatmap-color-legend").selectAll("rect").remove();
+
+      var legend = d3.select("#heatmap-color-legend");
+      var legendWidth = Math.floor($(d3.select("#heatmap-color-legend").node()).outerWidth());
+      var legendHeight = d3.select("#heatmap-color-legend").attr("height");
+
+      var legendColorScale = getColorScale(0, legendWidth);
+
+      var rangeStep = 2;
+      var valuesRange = d3.range(0, legendWidth, rangeStep);
+      var legendRects = legend.selectAll(".heatmap-color-legend-rect").data(valuesRange);
+
+      legendRects.enter().append("rect").attr("x", function (d) {
+        return d;
+      }).attr("y", 0).attr("width", rangeStep + 1 // Overlap rectangles to prevent gaps
+      ).attr("height", legendHeight).attr("stroke-width", 0).attr("fill", function (d) {
+        return legendColorScale(d);
+      });
+    }
+
     // Render
 
     function render() {
@@ -361,9 +383,19 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       fragment = getFragment(panel.fragment);
 
-      console.log(data);
+      if (!d3.select("#heatmap-color-legend").empty()) {
+        drawColorLegend();
+      }
 
       addCarpetplot();
+
+      scope.yAxisWidth = yAxisWidth;
+      scope.xAxisHeight = xAxisHeight;
+      scope.chartHeight = chartHeight;
+      scope.chartWidth = chartWidth;
+      scope.chartTop = chartTop;
+      scope.fragment = fragment;
+      scope.xFrom = xFrom;
     }
 
     $carpet.on('mousedown', onMouseDown);
@@ -387,6 +419,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       moment = _moment.default;
     }, function (_fragments) {
       getFragment = _fragments.getFragment;
+    }, function (_tooltip) {
+      CarpetplotTooltip = _tooltip.default;
     }],
     execute: function () {
       _slicedToArray = function () {

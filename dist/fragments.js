@@ -33,6 +33,9 @@ System.register(['moment'], function (_export, _context) {
         getBucketIndex: function getBucketIndex(time) {
           return time.hour() * 60 + time.minute();
         },
+        getTime: function getTime(time, bucketIndex) {
+          return moment(time).startOf('day').add(bucketIndex, 'minute');
+        },
         getBucket: function getBucket(timestamp) {
           return moment(timestamp).startOf('minute').unix();
         },
@@ -43,6 +46,9 @@ System.register(['moment'], function (_export, _context) {
         count: 96,
         getBucketIndex: function getBucketIndex(time) {
           return time.hour() * 4 + Math.floor(time.minute() / 15);
+        },
+        getTime: function getTime(time, bucketIndex) {
+          return moment(time).startOf('day').add(15 * bucketIndex, 'minute');
         },
         getBucket: function getBucket(timestamp) {
           var timeUtc = moment(timestamp);
@@ -56,6 +62,9 @@ System.register(['moment'], function (_export, _context) {
         count: 24,
         getBucketIndex: function getBucketIndex(time) {
           return time.hour();
+        },
+        getTime: function getTime(time, bucketIndex) {
+          return moment(time).startOf('day').add(bucketIndex, 'hour');
         },
         getBucket: function getBucket(timestamp) {
           return moment(timestamp).startOf('hour').unix();

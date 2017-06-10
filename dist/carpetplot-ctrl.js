@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['app/plugins/sdk', 'lodash', 'app/core/core', './data-converter', './aggregates', './fragments', './rendering', './css/carpet-plot.css!'], function (_export, _context) {
+System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/kbn', './data-converter', './aggregates', './fragments', './rendering', './options-editor', './css/carpet-plot.css!'], function (_export, _context) {
   "use strict";
 
-  var MetricsPanelCtrl, _, contextSrv, createConverter, aggregates, fragments, rendering, _createClass, panelDefaults, colorSchemes, CarpetPlotCtrl;
+  var MetricsPanelCtrl, _, contextSrv, kbn, createConverter, aggregates, fragments, rendering, carpetplotOptionsEditor, _createClass, panelDefaults, colorSchemes, fragmentOptions, aggregateOptions, CarpetPlotCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -42,6 +42,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', './data-converter
       _ = _lodash.default;
     }, function (_appCoreCore) {
       contextSrv = _appCoreCore.contextSrv;
+    }, function (_appCoreUtilsKbn) {
+      kbn = _appCoreUtilsKbn.default;
     }, function (_dataConverter) {
       createConverter = _dataConverter.default;
     }, function (_aggregates) {
@@ -50,6 +52,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', './data-converter
       fragments = _fragments.default;
     }, function (_rendering) {
       rendering = _rendering.default;
+    }, function (_optionsEditor) {
+      carpetplotOptionsEditor = _optionsEditor.carpetplotOptionsEditor;
     }, function (_cssCarpetPlotCss) {}],
     execute: function () {
       _createClass = function () {
@@ -80,6 +84,13 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', './data-converter
         scale: {
           min: null,
           max: null
+        },
+        yAxis: {
+          format: 'short'
+        },
+        tooltip: {
+          show: true,
+          decimals: null
         }
       };
       colorSchemes = [
@@ -91,6 +102,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', './data-converter
 
       // Sequential (Multi-Hue)
       { name: 'BuGn', value: 'interpolateBuGn', invert: 'dark' }, { name: 'BuPu', value: 'interpolateBuPu', invert: 'dark' }, { name: 'GnBu', value: 'interpolateGnBu', invert: 'dark' }, { name: 'OrRd', value: 'interpolateOrRd', invert: 'dark' }, { name: 'PuBuGn', value: 'interpolatePuBuGn', invert: 'dark' }, { name: 'PuBu', value: 'interpolatePuBu', invert: 'dark' }, { name: 'PuRd', value: 'interpolatePuRd', invert: 'dark' }, { name: 'RdPu', value: 'interpolateRdPu', invert: 'dark' }, { name: 'YlGnBu', value: 'interpolateYlGnBu', invert: 'dark' }, { name: 'YlGn', value: 'interpolateYlGn', invert: 'dark' }, { name: 'YlOrBr', value: 'interpolateYlOrBr', invert: 'dark' }, { name: 'YlOrRd', value: 'interpolateYlOrRd', invert: 'darm' }];
+      fragmentOptions = [{ name: 'Minute', value: fragments.MINUTE }, { name: '15 minutes', value: fragments.QUARTER }, { name: 'Hour', value: fragments.HOUR }];
+      aggregateOptions = [{ name: 'Average', value: aggregates.AVG }, { name: 'Sum', value: aggregates.SUM }, { name: 'Count', value: aggregates.CNT }];
 
       _export('CarpetPlotCtrl', CarpetPlotCtrl = function (_MetricsPanelCtrl) {
         _inherits(CarpetPlotCtrl, _MetricsPanelCtrl);
@@ -101,30 +114,52 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', './data-converter
           var _this = _possibleConstructorReturn(this, (CarpetPlotCtrl.__proto__ || Object.getPrototypeOf(CarpetPlotCtrl)).call(this, $scope, $injector));
 
           _this.onDataReceived = function (dataList) {
-            // TODO - dynamic params
-            var converter = createConverter(_this.panel.aggregate, _this.panel.fragment);
-
-            var _this$timeSrv$timeRan = _this.timeSrv.timeRange(),
-                from = _this$timeSrv$timeRan.from,
-                to = _this$timeSrv$timeRan.to;
-
-            _this.data = converter.convertData(from, to, dataList);
+            _this.dataList = dataList;
+            _this.data = _this.transformData(dataList);
             _this.render();
           };
 
+          _this.onInitEditMode = function () {
+            _this.addEditorTab('Options', carpetplotOptionsEditor, 2);
+            _this.unitFormats = kbn.getUnitFormats();
+          };
+
+          _this.onRender = function () {
+            if (!_this.dataList) {
+              return;
+            }
+            _this.data = _this.transformData(_this.dataList);
+          };
+
+          _this.dataList = null;
           _this.data = {};
           _this.timeSrv = timeSrv;
           _this.colorSchemes = colorSchemes;
+          _this.fragmentOptions = fragmentOptions;
+          _this.aggregateOptions = aggregateOptions;
           _this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
           _.defaultsDeep(_this.panel, panelDefaults);
 
           _this.events.on('data-received', _this.onDataReceived);
           _this.events.on('data-snapshot-load', _this.onDataReceived);
+          _this.events.on('init-edit-mode', _this.onInitEditMode);
+          _this.events.on('render', _this.onRender);
           return _this;
         }
 
         _createClass(CarpetPlotCtrl, [{
+          key: 'transformData',
+          value: function transformData(data) {
+            var converter = createConverter(this.panel.aggregate, this.panel.fragment);
+
+            var _timeSrv$timeRange = this.timeSrv.timeRange(),
+                from = _timeSrv$timeRange.from,
+                to = _timeSrv$timeRange.to;
+
+            return converter.convertData(from, to, data);
+          }
+        }, {
           key: 'link',
           value: function link(scope, elem, attrs, ctrl) {
             rendering(scope, elem, attrs, ctrl);
