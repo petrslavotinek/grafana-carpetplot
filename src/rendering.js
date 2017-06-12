@@ -364,8 +364,8 @@ export default function link(scope, elem, attrs, ctrl) {
   function getMousePos(event) {
     const { left, top } = $canvas[0].getBoundingClientRect();
     const pos = {
-      x: event.pageX - left, chartWidth,
-      y: event.pageY - top, chartHeight
+      x: event.pageX - window.scrollX - left,
+      y: event.pageY - window.scrollY - top
     };
     return pos;
   }

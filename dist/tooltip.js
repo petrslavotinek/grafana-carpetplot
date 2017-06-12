@@ -106,6 +106,7 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
             if (!this.panel.tooltip.show || !data) {
               return;
             }
+
             // shared tooltip mode
             if (event.panelRelY) {
               return;

@@ -57,6 +57,7 @@ class CarpetplotTooltip {
 
   show(event, pos, data) {
     if (!this.panel.tooltip.show || !data) { return; }
+
     // shared tooltip mode
     if (event.panelRelY) {
       return;

@@ -328,8 +328,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
           top = _$canvas$0$getBoundin.top;
 
       var pos = {
-        x: event.pageX - left, chartWidth: chartWidth,
-        y: event.pageY - top, chartHeight: chartHeight
+        x: event.pageX - window.scrollX - left,
+        y: event.pageY - window.scrollY - top
       };
       return pos;
     }
