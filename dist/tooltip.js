@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['d3', 'jquery', 'lodash', 'app/core/utils/kbn', 'moment'], function (_export, _context) {
+System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (_export, _context) {
   "use strict";
 
-  var d3, $, _, kbn, moment, _createClass, TOOLTIP_PADDING_X, TOOLTIP_PADDING_Y, CarpetplotTooltip;
+  var d3, $, _, moment, valueFormatter, _createClass, TOOLTIP_PADDING_X, TOOLTIP_PADDING_Y, CarpetplotTooltip;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -18,10 +18,10 @@ System.register(['d3', 'jquery', 'lodash', 'app/core/utils/kbn', 'moment'], func
       $ = _jquery.default;
     }, function (_lodash) {
       _ = _lodash.default;
-    }, function (_appCoreUtilsKbn) {
-      kbn = _appCoreUtilsKbn.default;
     }, function (_moment) {
       moment = _moment.default;
+    }, function (_formatting) {
+      valueFormatter = _formatting.valueFormatter;
     }],
     execute: function () {
       _createClass = function () {
@@ -125,8 +125,9 @@ System.register(['d3', 'jquery', 'lodash', 'app/core/utils/kbn', 'moment'], func
             var tooltipTimeFormat = 'ddd YYYY-MM-DD HH:mm:ss';
             var time = this.dashboard.formatDate(bucket.time, tooltipTimeFormat);
             var decimals = this.panel.tooltip.decimals || 5;
-            var valueFormatter = this.valueFormatter(decimals);
-            var value = valueFormatter(bucket.value);
+            var format = this.panel.yAxis.format;
+            var formatter = valueFormatter(format, decimals);
+            var value = formatter(bucket.value);
 
             var tooltipHtml = '\n      <div class=\'graph-tooltip-time\'>' + time + '</div>\n      <div>\n      value: <b>' + value + '</b><br/>\n      </div>\n    ';
 
@@ -194,14 +195,6 @@ System.register(['d3', 'jquery', 'lodash', 'app/core/utils/kbn', 'moment'], func
             }
 
             return this.tooltip.style('left', left + 'px').style('top', top + 'px');
-          }
-        }, {
-          key: 'valueFormatter',
-          value: function valueFormatter(decimals) {
-            var format = this.panel.yAxis.format;
-            return function (value) {
-              return kbn.valueFormats[format](value, _.isInteger(value) ? 0 : decimals);
-            };
           }
         }]);
 

@@ -1,8 +1,9 @@
 import d3 from 'd3';
 import $ from 'jquery';
 import _ from 'lodash';
-import kbn from 'app/core/utils/kbn';
 import moment from 'moment';
+
+import { valueFormatter } from './formatting';
 
 let TOOLTIP_PADDING_X = 30;
 let TOOLTIP_PADDING_Y = 5;
@@ -75,8 +76,9 @@ class CarpetplotTooltip {
     const tooltipTimeFormat = 'ddd YYYY-MM-DD HH:mm:ss';
     const time = this.dashboard.formatDate(bucket.time, tooltipTimeFormat);
     const decimals = this.panel.tooltip.decimals || 5;
-    const valueFormatter = this.valueFormatter(decimals);
-    const value = valueFormatter(bucket.value);
+    const format = this.panel.yAxis.format;
+    const formatter = valueFormatter(format, decimals);
+    const value = formatter(bucket.value);
 
     let tooltipHtml = `
       <div class='graph-tooltip-time'>${time}</div>
@@ -139,11 +141,6 @@ class CarpetplotTooltip {
     return this.tooltip
       .style('left', left + 'px')
       .style('top', top + 'px');
-  }
-
-  valueFormatter(decimals) {
-    const format = this.panel.yAxis.format;
-    return (value) => kbn.valueFormats[format](value, _.isInteger(value) ? 0 : decimals);
   }
 }
 

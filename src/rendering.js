@@ -7,6 +7,7 @@ import $ from 'jquery';
 
 import { getFragment } from './fragments';
 import CarpetplotTooltip from './tooltip';
+import { valueFormatter } from './formatting';
 
 const
   DEFAULT_X_TICK_SIZE_PX = 100,
@@ -101,7 +102,7 @@ export default function link(scope, elem, attrs, ctrl) {
 
   function addYAxis() {
     scope.yScale = yScale = d3.scaleTime()
-      .domain([moment().startOf('day').add(1, 'day').subtract(1, 'millisecond'), moment().startOf('day')])
+      .domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')])
       .range([chartHeight, 0]);
 
     const yAxis = d3.axisLeft(yScale)
@@ -121,6 +122,7 @@ export default function link(scope, elem, attrs, ctrl) {
     const yAxisGroup = carpet.select('.axis-y');
     yAxisGroup.attr('transform', `translate(${posX},${posY})`);
     yAxisGroup.select('.domain').remove();
+    yAxisGroup.select('.tick:first-child').remove();
     yAxisGroup.selectAll('.tick line').remove();
   }
 
@@ -149,19 +151,22 @@ export default function link(scope, elem, attrs, ctrl) {
       .tickFormat(d3.timeFormat('%a %m/%d'))
       .tickSize(chartHeight);
 
+    const dayWidth = chartWidth / days;
+
     const posY = margin.top;
     const posX = yAxisWidth;
     carpet.append('g')
       .attr('class', 'axis axis-x')
       .attr('transform', `translate(${posX},${posY})`)
-      .call(xAxis)
+    .call(xAxis)
       .selectAll('text')
       .style('text-anchor', 'end')
       .attr('dx', '-.8em')
       .attr('dy', '.15em')
       .attr('y', 0)
-      .attr('transform', `translate(5,${posY + chartHeight - 10}) rotate(-65)`);
+      .attr('transform', `translate(${5 + dayWidth / 2},${posY + chartHeight - 10}) rotate(-65)`);
     carpet.select('.axis-x').selectAll('.tick line').remove();
+    carpet.select('.axis-x').select('.tick:last-child').remove();
 
     addDayTicks(posX, posY, d3.timeSaturday.every(1));
     addDayTicks(posX, posY, d3.timeMonday.every(1));
@@ -403,6 +408,10 @@ export default function link(scope, elem, attrs, ctrl) {
   function addLegend() {
     if (!panel.legend.show) { return; }
 
+    const decimals = panel.tooltip.decimals || 5;
+    const format = panel.yAxis.format;
+    const formatter = valueFormatter(format, decimals);
+
     const legendContainer = carpet.append('g')
       .attr('class', 'carpet-legend')
       .attr('transform', `translate(${yAxisWidth},${margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN})`);
@@ -410,8 +419,8 @@ export default function link(scope, elem, attrs, ctrl) {
     const legendHeight = LEGEND_HEIGHT / 2;
     const labelMargin = 5;
     
-    const minLabel = createMinMaxLabel(legendContainer, min);
-    const maxLabel = createMinMaxLabel(legendContainer, max);
+    const minLabel = createMinMaxLabel(legendContainer, formatter(min));
+    const maxLabel = createMinMaxLabel(legendContainer, formatter(max));
     const $minLabel = $(minLabel.node());
     const $maxLabel = $(maxLabel.node());
 
@@ -439,6 +448,7 @@ export default function link(scope, elem, attrs, ctrl) {
 
     const legendAxis = d3.axisBottom(legendScale)
       .ticks(20)
+      .tickFormat(formatter)
       .tickSize(legendHeight);
 
     legendContainer.append('g')

@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', './fragments', './tooltip'], function (_export, _context) {
+System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', './fragments', './tooltip', './formatting'], function (_export, _context) {
   "use strict";
 
-  var d3, _, appEvents, contextSrv, tickStep, moment, $, getFragment, CarpetplotTooltip, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN;
+  var d3, _, appEvents, contextSrv, tickStep, moment, $, getFragment, CarpetplotTooltip, valueFormatter, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN;
 
   function link(scope, elem, attrs, ctrl) {
     var data = void 0,
@@ -105,7 +105,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function addYAxis() {
-      scope.yScale = yScale = d3.scaleTime().domain([moment().startOf('day').add(1, 'day').subtract(1, 'millisecond'), moment().startOf('day')]).range([chartHeight, 0]);
+      scope.yScale = yScale = d3.scaleTime().domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')]).range([chartHeight, 0]);
 
       var yAxis = d3.axisLeft(yScale).ticks(getYAxisTicks()).tickFormat(function (value) {
         return moment(value).format('HH:mm');
@@ -119,6 +119,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var yAxisGroup = carpet.select('.axis-y');
       yAxisGroup.attr('transform', 'translate(' + posX + ',' + posY + ')');
       yAxisGroup.select('.domain').remove();
+      yAxisGroup.select('.tick:first-child').remove();
       yAxisGroup.selectAll('.tick line').remove();
     }
 
@@ -144,10 +145,13 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       var xAxis = d3.axisBottom(xScale).ticks(getXAxisTicks(xFrom, xTo)).tickFormat(d3.timeFormat('%a %m/%d')).tickSize(chartHeight);
 
+      var dayWidth = chartWidth / days;
+
       var posY = margin.top;
       var posX = yAxisWidth;
-      carpet.append('g').attr('class', 'axis axis-x').attr('transform', 'translate(' + posX + ',' + posY + ')').call(xAxis).selectAll('text').style('text-anchor', 'end').attr('dx', '-.8em').attr('dy', '.15em').attr('y', 0).attr('transform', 'translate(5,' + (posY + chartHeight - 10) + ') rotate(-65)');
+      carpet.append('g').attr('class', 'axis axis-x').attr('transform', 'translate(' + posX + ',' + posY + ')').call(xAxis).selectAll('text').style('text-anchor', 'end').attr('dx', '-.8em').attr('dy', '.15em').attr('y', 0).attr('transform', 'translate(' + (5 + dayWidth / 2) + ',' + (posY + chartHeight - 10) + ') rotate(-65)');
       carpet.select('.axis-x').selectAll('.tick line').remove();
+      carpet.select('.axis-x').select('.tick:last-child').remove();
 
       addDayTicks(posX, posY, d3.timeSaturday.every(1));
       addDayTicks(posX, posY, d3.timeMonday.every(1));
@@ -368,13 +372,17 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         return;
       }
 
+      var decimals = panel.tooltip.decimals || 5;
+      var format = panel.yAxis.format;
+      var formatter = valueFormatter(format, decimals);
+
       var legendContainer = carpet.append('g').attr('class', 'carpet-legend').attr('transform', 'translate(' + yAxisWidth + ',' + (margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN) + ')');
 
       var legendHeight = LEGEND_HEIGHT / 2;
       var labelMargin = 5;
 
-      var minLabel = createMinMaxLabel(legendContainer, min);
-      var maxLabel = createMinMaxLabel(legendContainer, max);
+      var minLabel = createMinMaxLabel(legendContainer, formatter(min));
+      var maxLabel = createMinMaxLabel(legendContainer, formatter(max));
       var $minLabel = $(minLabel.node());
       var $maxLabel = $(maxLabel.node());
 
@@ -393,7 +401,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       var legendScale = d3.scaleLinear().domain([min, max]).range([0, legendWidth]);
 
-      var legendAxis = d3.axisBottom(legendScale).ticks(20).tickSize(legendHeight);
+      var legendAxis = d3.axisBottom(legendScale).ticks(20).tickFormat(formatter).tickSize(legendHeight);
 
       legendContainer.append('g').attr('class', 'legend-axis').call(legendAxis).attr('transform', 'translate(' + legendMargin + ',0)').select('.domain').remove();
     }
@@ -465,6 +473,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       getFragment = _fragments.getFragment;
     }, function (_tooltip) {
       CarpetplotTooltip = _tooltip.default;
+    }, function (_formatting) {
+      valueFormatter = _formatting.valueFormatter;
     }],
     execute: function () {
       _slicedToArray = function () {
