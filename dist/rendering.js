@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', './fragments', './tooltip'], function (_export, _context) {
+System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', './fragments', './tooltip'], function (_export, _context) {
   "use strict";
 
-  var d3, _, appEvents, contextSrv, tickStep, moment, getFragment, CarpetplotTooltip, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, MIN_SELECTION_WIDTH;
+  var d3, _, appEvents, contextSrv, tickStep, moment, $, getFragment, CarpetplotTooltip, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN;
 
   function link(scope, elem, attrs, ctrl) {
     var data = void 0,
@@ -31,6 +31,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         yAxisWidth = void 0,
         yScale = void 0,
         xScale = void 0,
+        legendHeight = void 0,
         colorScale = void 0,
         fragment = void 0,
         mouseUpHandler = void 0,
@@ -52,15 +53,17 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         return;
       }
 
-      addCarpetplotCanvas();
-      addAxes();
-
       var _getMinMax = getMinMax();
 
       var _getMinMax2 = _slicedToArray(_getMinMax, 2);
 
       min = _getMinMax2[0];
       max = _getMinMax2[1];
+
+
+      addCarpetplotCanvas();
+      addAxes();
+      addLegend();
 
       colorScale = getColorScale(min, max);
 
@@ -79,7 +82,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function addAxes() {
-      chartHeight = height - margin.top - margin.bottom;
+      legendHeight = panel.legend.show ? LEGEND_HEIGHT + LEGEND_TOP_MARGIN : 0;
+      chartHeight = height - margin.top - margin.bottom - legendHeight;
       chartTop = margin.top;
       chartBottom = chartTop + chartHeight;
 
@@ -90,19 +94,20 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       addXAxis();
       xAxisHeight = getXAxisHeight();
 
-      // if (!panel.yAxis.show) {
-      //   heatmap.select('.axis-y').selectAll('line').style('opacity', 0);
-      // }
+      if (!panel.yAxis.show) {
+        carpet.select('.axis-y').selectAll('line').style('opacity', 0);
+      }
 
-      // if (!panel.xAxis.show) {
-      //   heatmap.select('.axis-x').selectAll('line').style('opacity', 0);
-      // }
+      if (!panel.xAxis.show) {
+        carpet.select('.axis-x').selectAll('line').style('opacity', 0);
+        carpet.selectAll('.axis-x-weekends').selectAll('line').style('opacity', 0);
+      }
     }
 
     function addYAxis() {
-      scope.yScale = yScale = d3.scaleTime().domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')]).range([chartHeight, 0]);
+      scope.yScale = yScale = d3.scaleTime().domain([moment().startOf('day').add(1, 'day').subtract(1, 'millisecond'), moment().startOf('day')]).range([chartHeight, 0]);
 
-      var yAxis = d3.axisLeft(yScale).ticks(d3.timeHour.every(4)).tickFormat(function (value) {
+      var yAxis = d3.axisLeft(yScale).ticks(getYAxisTicks()).tickFormat(function (value) {
         return moment(value).format('HH:mm');
       }).tickSizeInner(0 - width).tickSizeOuter(0).tickPadding(Y_AXIS_TICK_PADDING);
 
@@ -124,6 +129,12 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       });
     }
 
+    function getYAxisTicks() {
+      var count = chartHeight / Y_AXIS_TICK_MIN_SIZE;
+      var step = Math.max(2, Math.ceil(24 / count));
+      return d3.timeHour.every(step);
+    }
+
     function addXAxis() {
       xFrom = moment(data.from.local()).startOf('day');
       xTo = moment(data.to.local()).startOf('day');
@@ -136,30 +147,35 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var posY = margin.top;
       var posX = yAxisWidth;
       carpet.append('g').attr('class', 'axis axis-x').attr('transform', 'translate(' + posX + ',' + posY + ')').call(xAxis).selectAll('text').style('text-anchor', 'end').attr('dx', '-.8em').attr('dy', '.15em').attr('y', 0).attr('transform', 'translate(5,' + (posY + chartHeight - 10) + ') rotate(-65)');
+      carpet.select('.axis-x').selectAll('.tick line').remove();
 
-      carpet.select('.axis-x').select('.domain').remove();
+      addDayTicks(posX, posY, d3.timeSaturday.every(1));
+      addDayTicks(posX, posY, d3.timeMonday.every(1));
+    }
+
+    function addDayTicks(posX, posY, range) {
+      var ticks = d3.axisBottom(xScale).ticks(range).tickSize(chartHeight);
+      carpet.append('g').attr('class', 'axis-x-weekends').attr('transform', 'translate(' + posX + ',' + posY + ')').call(ticks).selectAll('text').remove();
+      carpet.select('.axis-x-weekends .domain').remove();
     }
 
     function getXAxisHeight() {
-      var axisLine = carpet.select('.axis-x line');
-      if (!axisLine.empty()) {
-        var axisLinePosition = parseFloat(carpet.select('.axis-x line').attr('y2'));
-        var canvasHeight = parseFloat(carpet.attr('height'));
-        return canvasHeight - axisLinePosition;
-      } else {
-        // Default height
-        return 30;
+      var axis = carpet.select('.axis-x');
+      if (!axis.empty()) {
+        var totalHeight = $(axis.node()).height();
+        return Math.max(0, totalHeight - chartHeight);
       }
+      return 0;
     }
 
     function getXAxisTicks(from, to) {
       var count = chartWidth / X_AXIS_TICK_MIN_SIZE;
       var step = Math.ceil(days / count);
       if (step < 7) {
-        return d3.timeDay.every(step);
+        return d3.timeDay.every(1);
       }
       if (step < 28) {
-        return d3.timeWeek.every(Math.floor(step / 7));
+        return d3.timeMonday.every(1);
       }
       return d3.timeMonth.every(1);
     }
@@ -231,15 +247,6 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       return prop !== undefined && prop !== null && prop !== '';
     }
 
-    // Selection, Crosshair, Tooltip
-    // appEvents.on('graph-hover', event => {
-    //   drawSharedCrosshair(event.pos);
-    // }, scope);
-
-    // appEvents.on('graph-hover-clear', () => {
-    //   clearCrosshair();
-    // }, scope);
-
     function onMouseDown(event) {
       selection.active = true;
       selection.x1 = event.offsetX;
@@ -307,13 +314,6 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       carpet.append('g').attr('class', 'heatmap-crosshair').attr('transform', 'translate(' + posX + ',0)').append('line').attr('x1', 1).attr('y1', chartTop).attr('x2', 1).attr('y2', chartBottom).attr('stroke-width', 1);
     }
 
-    // function drawSharedCrosshair(pos) {
-    //   if (!carpet || ctrl.dashboard.graphTooltip === 0) { return; }
-
-    //   const posX = xScale(pos.x) + yAxisWidth;
-    //   drawCrosshair(posX);
-    // }
-
     function clearCrosshair() {
       if (!carpet) {
         return;
@@ -360,13 +360,55 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var legendWidth = Math.floor($(d3.select("#heatmap-color-legend").node()).outerWidth());
       var legendHeight = d3.select("#heatmap-color-legend").attr("height");
 
+      drawLegend(legend, legendWidth, legendHeight);
+    }
+
+    function addLegend() {
+      if (!panel.legend.show) {
+        return;
+      }
+
+      var legendContainer = carpet.append('g').attr('class', 'carpet-legend').attr('transform', 'translate(' + yAxisWidth + ',' + (margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN) + ')');
+
+      var legendHeight = LEGEND_HEIGHT / 2;
+      var labelMargin = 5;
+
+      var minLabel = createMinMaxLabel(legendContainer, min);
+      var maxLabel = createMinMaxLabel(legendContainer, max);
+      var $minLabel = $(minLabel.node());
+      var $maxLabel = $(maxLabel.node());
+
+      var labelHeight = Math.ceil(Math.max($minLabel.height(), $maxLabel.height()));
+      var labelWidth = Math.ceil(Math.max($minLabel.width(), $maxLabel.width()));
+      var legendMargin = labelWidth + 2 * labelMargin;
+      var labelY = (legendHeight - labelHeight + 8) / 2;
+
+      minLabel.attr('x', legendMargin / 2).attr('y', labelY);
+      maxLabel.attr('x', chartWidth - legendMargin / 2).attr('y', labelY);
+
+      var legend = legendContainer.append('g').attr('transform', 'translate(' + legendMargin + ',0)');
+
+      var legendWidth = chartWidth - 2 * legendMargin;
+      drawLegend(legend, legendWidth, legendHeight);
+
+      var legendScale = d3.scaleLinear().domain([min, max]).range([0, legendWidth]);
+
+      var legendAxis = d3.axisBottom(legendScale).ticks(20).tickSize(legendHeight);
+
+      legendContainer.append('g').attr('class', 'legend-axis').call(legendAxis).attr('transform', 'translate(' + legendMargin + ',0)').select('.domain').remove();
+    }
+
+    function createMinMaxLabel(legendContainer, text) {
+      return legendContainer.append('text').attr('class', 'min-max-label').attr('y', 0).attr('x', 0).attr('dy', '0.71em').attr('text-anchor', 'middle').text(text);
+    }
+
+    function drawLegend(legend, legendWidth, legendHeight) {
+      var rangeStep = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 2;
+
       var legendColorScale = getColorScale(0, legendWidth);
-
-      var rangeStep = 2;
       var valuesRange = d3.range(0, legendWidth, rangeStep);
-      var legendRects = legend.selectAll(".heatmap-color-legend-rect").data(valuesRange);
 
-      legendRects.enter().append("rect").attr("x", function (d) {
+      return legend.selectAll(".heatmap-color-legend-rect").data(valuesRange).enter().append("rect").attr("x", function (d) {
         return d;
       }).attr("y", 0).attr("width", rangeStep + 1 // Overlap rectangles to prevent gaps
       ).attr("height", legendHeight).attr("stroke-width", 0).attr("fill", function (d) {
@@ -417,6 +459,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       tickStep = _appCoreUtilsTicks.tickStep;
     }, function (_moment) {
       moment = _moment.default;
+    }, function (_jquery) {
+      $ = _jquery.default;
     }, function (_fragments) {
       getFragment = _fragments.getFragment;
     }, function (_tooltip) {
@@ -464,7 +508,10 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       DEFAULT_X_TICK_SIZE_PX = 100;
       X_AXIS_TICK_MIN_SIZE = 100;
       Y_AXIS_TICK_PADDING = 5;
+      Y_AXIS_TICK_MIN_SIZE = 20;
       MIN_SELECTION_WIDTH = 2;
+      LEGEND_HEIGHT = 40;
+      LEGEND_TOP_MARGIN = 10;
     }
   };
 });

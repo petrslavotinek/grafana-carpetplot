@@ -122,7 +122,7 @@ System.register(['d3', 'jquery', 'lodash', 'app/core/utils/kbn', 'moment'], func
               return;
             }
 
-            var tooltipTimeFormat = 'YYYY-MM-DD HH:mm:ss';
+            var tooltipTimeFormat = 'ddd YYYY-MM-DD HH:mm:ss';
             var time = this.dashboard.formatDate(bucket.time, tooltipTimeFormat);
             var decimals = this.panel.tooltip.decimals || 5;
             var valueFormatter = this.valueFormatter(decimals);

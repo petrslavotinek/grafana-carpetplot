@@ -1,6 +1,7 @@
 .carpetplot-panel {
   cursor: crosshair;
 
+  .carpet-legend,
   .tick {
     text {
       font-size: .875rem;
@@ -8,13 +9,14 @@
   }
 
   .carpet-selection {
-    opacity: 0.5;
+    opacity: .5;
   }
 }
 
 .carpetplot-wrapper {
   &.light {
     .carpetplot-panel {
+      .carpet-legend,
       .tick {
         text {
           fill: #1F1D1D;
@@ -30,6 +32,7 @@
 
   &.dark {
     .carpetplot-panel {
+      .carpet-legend,
       .tick {
         text {
           fill: #D8D9DA;

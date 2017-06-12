@@ -72,7 +72,7 @@ class CarpetplotTooltip {
       return;
     }
 
-    const tooltipTimeFormat = 'YYYY-MM-DD HH:mm:ss';
+    const tooltipTimeFormat = 'ddd YYYY-MM-DD HH:mm:ss';
     const time = this.dashboard.formatDate(bucket.time, tooltipTimeFormat);
     const decimals = this.panel.tooltip.decimals || 5;
     const valueFormatter = this.valueFormatter(decimals);

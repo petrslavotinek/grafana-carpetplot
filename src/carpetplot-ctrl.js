@@ -21,12 +21,19 @@ const panelDefaults = {
     min: null,
     max: null
   },
+  xAxis: {
+    show: true
+  },
   yAxis: {
-    format: 'short'
+    format: 'short',
+    show: true
   },
   tooltip: {
     show: true,
     decimals: null
+  },
+  legend: {
+    show: true
   }
 };
 

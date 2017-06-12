@@ -85,12 +85,19 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           min: null,
           max: null
         },
+        xAxis: {
+          show: true
+        },
         yAxis: {
-          format: 'short'
+          format: 'short',
+          show: true
         },
         tooltip: {
           show: true,
           decimals: null
+        },
+        legend: {
+          show: true
         }
       };
       colorSchemes = [
