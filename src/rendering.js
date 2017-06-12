@@ -36,7 +36,8 @@ export default function link(scope, elem, attrs, ctrl) {
     legendHeight,
     colorScale, fragment,
     mouseUpHandler,
-    originalPointColor;
+    originalPointColor,
+    $canvas;
 
   const selection = {
     active: false,
@@ -138,8 +139,8 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function addXAxis() {
-    xFrom = moment(data.from.local()).startOf('day');
-    xTo = moment(data.to.local()).startOf('day');
+    xFrom = moment(data.data[0].time).startOf('day');
+    xTo = moment(data.data[data.data.length - 1].time).startOf('day').add(1, 'day');
     days = xTo.diff(xFrom, 'days');
 
     scope.xScale = xScale = d3.scaleTime()
@@ -158,7 +159,7 @@ export default function link(scope, elem, attrs, ctrl) {
     carpet.append('g')
       .attr('class', 'axis axis-x')
       .attr('transform', `translate(${posX},${posY})`)
-    .call(xAxis)
+      .call(xAxis)
       .selectAll('text')
       .style('text-anchor', 'end')
       .attr('dx', '-.8em')
@@ -210,6 +211,8 @@ export default function link(scope, elem, attrs, ctrl) {
       .attr('class', 'carpet-container')
       .attr('transform', `translate(${yAxisWidth},${margin.top})`);
 
+    $canvas = $(container.node());
+
     const cols = container
       .selectAll('.carpet-col')
       .data(data.data)
@@ -217,8 +220,8 @@ export default function link(scope, elem, attrs, ctrl) {
       .append('g')
       .attr('transform', (day) => `translate(${xScale(day.time.toDate())},0)`);
 
-    const width = chartWidth / days;
-    const height = chartHeight / fragment.count;
+    const width = Math.max(0, chartWidth / days);
+    const height = Math.max(0, chartHeight / fragment.count);
 
     const pointScale = d3.scaleLinear()
       .domain([fragment.count, 0])
@@ -289,7 +292,9 @@ export default function link(scope, elem, attrs, ctrl) {
 
   function onMouseDown(event) {
     selection.active = true;
-    selection.x1 = event.offsetX;
+    const pos = getMousePos(event);
+    const posX = pos.x + yAxisWidth;
+    selection.x1 = posX;
 
     mouseUpHandler = () => onMouseUp();
 
@@ -324,30 +329,29 @@ export default function link(scope, elem, attrs, ctrl) {
   function onMouseMove(event) {
     if (!carpet) { return; }
 
+    const pos = getMousePos(event);
+    const posX = pos.x + yAxisWidth;
+
     if (selection.active) {
       clearCrosshair();
       tooltip.destroy();
 
-      selection.x2 = limitSelection(event.offsetX);
+      selection.x2 = posX;
       drawSelection(selection.x1, selection.x2);
     } else {
-      drawCrosshair(event.offsetX);
-      tooltip.show(event, data);
+      drawCrosshair(posX);
+      tooltip.show(event, pos, data);
     }
   }
 
-  function drawCrosshair(position) {
+  function drawCrosshair(posX) {
     if (!carpet) { return; }
 
     carpet.selectAll('.heatmap-crosshair').remove();
 
-    let posX = position;
-    posX = Math.max(posX, yAxisWidth);
-    posX = Math.min(posX, chartWidth + yAxisWidth);
-
     carpet.append('g')
       .attr('class', 'heatmap-crosshair')
-      .attr('transform', 'translate(' + posX + ',0)')
+      .attr('transform', `translate(${posX},0)`)
       .append('line')
       .attr('x1', 1)
       .attr('y1', chartTop)
@@ -357,16 +361,19 @@ export default function link(scope, elem, attrs, ctrl) {
 
   }
 
+  function getMousePos(event) {
+    const { left, top } = $canvas[0].getBoundingClientRect();
+    const pos = {
+      x: event.pageX - left, chartWidth,
+      y: event.pageY - top, chartHeight
+    };
+    return pos;
+  }
+
   function clearCrosshair() {
     if (!carpet) { return; }
 
     carpet.selectAll('.heatmap-crosshair').remove();
-  }
-
-  function limitSelection(x2) {
-    x2 = Math.max(x2, yAxisWidth);
-    x2 = Math.min(x2, chartWidth + yAxisWidth);
-    return x2;
   }
 
   function drawSelection(posX1, posX2) {
@@ -418,7 +425,7 @@ export default function link(scope, elem, attrs, ctrl) {
 
     const legendHeight = LEGEND_HEIGHT / 2;
     const labelMargin = 5;
-    
+
     const minLabel = createMinMaxLabel(legendContainer, formatter(min));
     const maxLabel = createMinMaxLabel(legendContainer, formatter(max));
     const $minLabel = $(minLabel.node());

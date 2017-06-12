@@ -55,10 +55,10 @@ class CarpetplotTooltip {
     this.tooltip = null;
   }
 
-  show(pos, data) {
+  show(event, pos, data) {
     if (!this.panel.tooltip.show || !data) { return; }
     // shared tooltip mode
-    if (pos.panelRelY) {
+    if (event.panelRelY) {
       return;
     }
 
@@ -68,7 +68,7 @@ class CarpetplotTooltip {
     }
 
     const bucket = this.getBucket(pos, data);
-    if (!bucket) {
+    if (!bucket || bucket.value === null) {
       this.destroy();
       return;
     }
@@ -89,25 +89,25 @@ class CarpetplotTooltip {
 
     this.tooltip.html(tooltipHtml);
 
-    this.move(pos);
+    this.move(event);
   }
 
   isInChart(pos) {
-    const { offsetX, offsetY } = pos;
-    const { yAxisWidth, chartWidth, chartTop, chartHeight } = this.scope;
+    const { x, y } = pos;
+    const { chartWidth, chartHeight } = this.scope;
 
-    return offsetX > yAxisWidth
-      && offsetX < yAxisWidth + chartWidth
-      && offsetY > chartTop
-      && offsetY < chartTop + chartHeight;
+    return x > 0
+      && x < chartWidth
+      && y > 0
+      && y < chartHeight;
   }
 
   getBucket(pos, data) {
-    const { offsetX, offsetY } = pos;
-    const { yAxisWidth, chartTop, fragment, xFrom } = this.scope;
+    const { x, y } = pos;
+    const { fragment, xFrom } = this.scope;
 
-    const xTime = this.scope.xScale.invert(offsetX - yAxisWidth);
-    const yTime = this.scope.yScale.invert(offsetY - chartTop);
+    const xTime = this.scope.xScale.invert(x);
+    const yTime = this.scope.yScale.invert(y);
 
     const dayIndex = moment(xTime).startOf('day').diff(xFrom, 'days');
     const bucketIndex = fragment.getBucketIndex(moment(yTime));
@@ -120,22 +120,22 @@ class CarpetplotTooltip {
       : null;
   }
 
-  move(pos) {
+  move(event) {
     if (!this.tooltip) { return; }
 
     const elem = $(this.tooltip.node())[0];
     const tooltipWidth = elem.clientWidth;
     const tooltipHeight = elem.clientHeight;
 
-    let left = pos.pageX + TOOLTIP_PADDING_X;
-    let top = pos.pageY + TOOLTIP_PADDING_Y;
+    let left = event.pageX + TOOLTIP_PADDING_X;
+    let top = event.pageY + TOOLTIP_PADDING_Y;
 
-    if (pos.pageX + tooltipWidth + 40 > window.innerWidth) {
-      left = pos.pageX - tooltipWidth - TOOLTIP_PADDING_X;
+    if (event.pageX + tooltipWidth + 40 > window.innerWidth) {
+      left = event.pageX - tooltipWidth - TOOLTIP_PADDING_X;
     }
 
-    if (pos.pageY - window.pageYOffset + tooltipHeight + 20 > window.innerHeight) {
-      top = pos.pageY - tooltipHeight - TOOLTIP_PADDING_Y;
+    if (event.pageY - window.pageYOffset + tooltipHeight + 20 > window.innerHeight) {
+      top = event.pageY - tooltipHeight - TOOLTIP_PADDING_Y;
     }
 
     return this.tooltip

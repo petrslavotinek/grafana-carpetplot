@@ -102,12 +102,12 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
           }
         }, {
           key: 'show',
-          value: function show(pos, data) {
+          value: function show(event, pos, data) {
             if (!this.panel.tooltip.show || !data) {
               return;
             }
             // shared tooltip mode
-            if (pos.panelRelY) {
+            if (event.panelRelY) {
               return;
             }
 
@@ -117,7 +117,7 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
             }
 
             var bucket = this.getBucket(pos, data);
-            if (!bucket) {
+            if (!bucket || bucket.value === null) {
               this.destroy();
               return;
             }
@@ -133,36 +133,32 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
 
             this.tooltip.html(tooltipHtml);
 
-            this.move(pos);
+            this.move(event);
           }
         }, {
           key: 'isInChart',
           value: function isInChart(pos) {
-            var offsetX = pos.offsetX,
-                offsetY = pos.offsetY;
+            var x = pos.x,
+                y = pos.y;
             var _scope = this.scope,
-                yAxisWidth = _scope.yAxisWidth,
                 chartWidth = _scope.chartWidth,
-                chartTop = _scope.chartTop,
                 chartHeight = _scope.chartHeight;
 
 
-            return offsetX > yAxisWidth && offsetX < yAxisWidth + chartWidth && offsetY > chartTop && offsetY < chartTop + chartHeight;
+            return x > 0 && x < chartWidth && y > 0 && y < chartHeight;
           }
         }, {
           key: 'getBucket',
           value: function getBucket(pos, data) {
-            var offsetX = pos.offsetX,
-                offsetY = pos.offsetY;
+            var x = pos.x,
+                y = pos.y;
             var _scope2 = this.scope,
-                yAxisWidth = _scope2.yAxisWidth,
-                chartTop = _scope2.chartTop,
                 fragment = _scope2.fragment,
                 xFrom = _scope2.xFrom;
 
 
-            var xTime = this.scope.xScale.invert(offsetX - yAxisWidth);
-            var yTime = this.scope.yScale.invert(offsetY - chartTop);
+            var xTime = this.scope.xScale.invert(x);
+            var yTime = this.scope.yScale.invert(y);
 
             var dayIndex = moment(xTime).startOf('day').diff(xFrom, 'days');
             var bucketIndex = fragment.getBucketIndex(moment(yTime));
@@ -174,7 +170,7 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
           }
         }, {
           key: 'move',
-          value: function move(pos) {
+          value: function move(event) {
             if (!this.tooltip) {
               return;
             }
@@ -183,15 +179,15 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
             var tooltipWidth = elem.clientWidth;
             var tooltipHeight = elem.clientHeight;
 
-            var left = pos.pageX + TOOLTIP_PADDING_X;
-            var top = pos.pageY + TOOLTIP_PADDING_Y;
+            var left = event.pageX + TOOLTIP_PADDING_X;
+            var top = event.pageY + TOOLTIP_PADDING_Y;
 
-            if (pos.pageX + tooltipWidth + 40 > window.innerWidth) {
-              left = pos.pageX - tooltipWidth - TOOLTIP_PADDING_X;
+            if (event.pageX + tooltipWidth + 40 > window.innerWidth) {
+              left = event.pageX - tooltipWidth - TOOLTIP_PADDING_X;
             }
 
-            if (pos.pageY - window.pageYOffset + tooltipHeight + 20 > window.innerHeight) {
-              top = pos.pageY - tooltipHeight - TOOLTIP_PADDING_Y;
+            if (event.pageY - window.pageYOffset + tooltipHeight + 20 > window.innerHeight) {
+              top = event.pageY - tooltipHeight - TOOLTIP_PADDING_Y;
             }
 
             return this.tooltip.style('left', left + 'px').style('top', top + 'px');

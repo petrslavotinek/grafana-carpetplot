@@ -35,7 +35,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         colorScale = void 0,
         fragment = void 0,
         mouseUpHandler = void 0,
-        originalPointColor = void 0;
+        originalPointColor = void 0,
+        $canvas = void 0;
 
     var selection = {
       active: false,
@@ -137,8 +138,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function addXAxis() {
-      xFrom = moment(data.from.local()).startOf('day');
-      xTo = moment(data.to.local()).startOf('day');
+      xFrom = moment(data.data[0].time).startOf('day');
+      xTo = moment(data.data[data.data.length - 1].time).startOf('day').add(1, 'day');
       days = xTo.diff(xFrom, 'days');
 
       scope.xScale = xScale = d3.scaleTime().domain([xFrom, xTo]).range([0, chartWidth]);
@@ -187,12 +188,14 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     function addPoints(colorScale) {
       var container = carpet.insert('g', ':first-child').attr('class', 'carpet-container').attr('transform', 'translate(' + yAxisWidth + ',' + margin.top + ')');
 
+      $canvas = $(container.node());
+
       var cols = container.selectAll('.carpet-col').data(data.data).enter().append('g').attr('transform', function (day) {
         return 'translate(' + xScale(day.time.toDate()) + ',0)';
       });
 
-      var width = chartWidth / days;
-      var height = chartHeight / fragment.count;
+      var width = Math.max(0, chartWidth / days);
+      var height = Math.max(0, chartHeight / fragment.count);
 
       var pointScale = d3.scaleLinear().domain([fragment.count, 0]).range([chartHeight, 0]);
 
@@ -253,7 +256,9 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
     function onMouseDown(event) {
       selection.active = true;
-      selection.x1 = event.offsetX;
+      var pos = getMousePos(event);
+      var posX = pos.x + yAxisWidth;
+      selection.x1 = posX;
 
       mouseUpHandler = function mouseUpHandler() {
         return onMouseUp();
@@ -292,30 +297,41 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         return;
       }
 
+      var pos = getMousePos(event);
+      var posX = pos.x + yAxisWidth;
+
       if (selection.active) {
         clearCrosshair();
         tooltip.destroy();
 
-        selection.x2 = limitSelection(event.offsetX);
+        selection.x2 = posX;
         drawSelection(selection.x1, selection.x2);
       } else {
-        drawCrosshair(event.offsetX);
-        tooltip.show(event, data);
+        drawCrosshair(posX);
+        tooltip.show(event, pos, data);
       }
     }
 
-    function drawCrosshair(position) {
+    function drawCrosshair(posX) {
       if (!carpet) {
         return;
       }
 
       carpet.selectAll('.heatmap-crosshair').remove();
 
-      var posX = position;
-      posX = Math.max(posX, yAxisWidth);
-      posX = Math.min(posX, chartWidth + yAxisWidth);
-
       carpet.append('g').attr('class', 'heatmap-crosshair').attr('transform', 'translate(' + posX + ',0)').append('line').attr('x1', 1).attr('y1', chartTop).attr('x2', 1).attr('y2', chartBottom).attr('stroke-width', 1);
+    }
+
+    function getMousePos(event) {
+      var _$canvas$0$getBoundin = $canvas[0].getBoundingClientRect(),
+          left = _$canvas$0$getBoundin.left,
+          top = _$canvas$0$getBoundin.top;
+
+      var pos = {
+        x: event.pageX - left, chartWidth: chartWidth,
+        y: event.pageY - top, chartHeight: chartHeight
+      };
+      return pos;
     }
 
     function clearCrosshair() {
@@ -324,12 +340,6 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       }
 
       carpet.selectAll('.heatmap-crosshair').remove();
-    }
-
-    function limitSelection(x2) {
-      x2 = Math.max(x2, yAxisWidth);
-      x2 = Math.min(x2, chartWidth + yAxisWidth);
-      return x2;
     }
 
     function drawSelection(posX1, posX2) {
