@@ -2,6 +2,10 @@
 
 Carpet plot panel plugin for grafana.
 
+![Carpet plot - Screenshot 1 - Panel and options](https://raw.githubusercontent.com/petrslavotinek/grafana-carpetplot/master/dist/src/img/screenshot1.png)
+
+![Carpet plot - Screenshot 2 - Panel](https://raw.githubusercontent.com/petrslavotinek/grafana-carpetplot/master/dist/src/img/screenshot2.png)
+
 ## How to use
 
 This panel receives data series and divides all the data into individual buckets. It groups the data first by day and then by a selected fragment of a day (hour / 15 minutes / minute). If there are multiple data points in a bucket (for example there were multiple series) it aggregates the points using a selected function (average, sum, count).
