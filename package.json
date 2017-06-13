@@ -1,14 +1,17 @@
 {
   "name": "carpetplot",
   "version": "1.0.0",
-  "description": "Carpet plot plugin",
-  "main": "Gruntfile.js",
+  "description": "Carpet plot panel plugin for grafana",
+  "main": "README.md",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "grunt"
   },
-  "author": "",
+  "author": "Petr Slavotinek",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/petrslavotinek/grafana-carpetplot.git"
+  },
   "devDependencies": {
     "babel": "^6.23.0",
     "babel-eslint": "^7.2.3",
@@ -29,8 +32,6 @@
   },
   "dependencies": {
     "d3": "^4.9.1",
-    "d3-array": "^1.2.0",
-    "d3-scale": "^1.0.6",
     "lodash": "^4.17.4",
     "moment": "^2.18.1"
   }
