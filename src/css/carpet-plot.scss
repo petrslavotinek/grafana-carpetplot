@@ -1,5 +1,6 @@
 .carpetplot-panel {
   cursor: crosshair;
+  position: relative;
 
   .carpet-legend,
   .tick {
@@ -10,6 +11,16 @@
 
   .carpet-selection {
     opacity: .5;
+  }
+
+  canvas {
+    position: absolute;
+  }
+
+  svg {
+    position: absolute;
+    top: 0;
+    left: 0;
   }
 }
 

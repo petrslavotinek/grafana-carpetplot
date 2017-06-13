@@ -3,7 +3,7 @@
 System.register([], function (_export, _context) {
   "use strict";
 
-  var _aggregates, AVG, SUM, CNT, sum, aggregates, aggregate;
+  var _aggregates, AVG, SUM, CNT, sum, aggregates, aggregate, aggregatesMap;
 
   function _defineProperty(obj, key, value) {
     if (key in obj) {
@@ -49,6 +49,10 @@ System.register([], function (_export, _context) {
       });
 
       _export('aggregate', aggregate);
+
+      _export('aggregatesMap', aggregatesMap = [{ name: 'Average', value: AVG }, { name: 'Sum', value: SUM }, { name: 'Count', value: CNT }]);
+
+      _export('aggregatesMap', aggregatesMap);
 
       _export('default', {
         AVG: AVG,

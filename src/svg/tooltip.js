@@ -3,7 +3,7 @@ import $ from 'jquery';
 import _ from 'lodash';
 import moment from 'moment';
 
-import { valueFormatter } from './formatting';
+import { valueFormatter } from '../formatting';
 
 let TOOLTIP_PADDING_X = 30;
 let TOOLTIP_PADDING_Y = 5;
@@ -16,7 +16,6 @@ class CarpetplotTooltip {
     this.dashboard = scope.ctrl.dashboard;
     this.panel = scope.ctrl.panel;
     this.carpetPanel = elem;
-    this.mouseOverPoint = false;
 
     elem.on('mouseover', this.onMouseOver.bind(this));
     elem.on('mouseleave', this.onMouseLeave.bind(this));
@@ -76,8 +75,8 @@ class CarpetplotTooltip {
 
     const tooltipTimeFormat = 'ddd YYYY-MM-DD HH:mm:ss';
     const time = this.dashboard.formatDate(bucket.time, tooltipTimeFormat);
-    const decimals = this.panel.tooltip.decimals || 5;
-    const format = this.panel.yAxis.format;
+    const decimals = this.panel.data.decimals || 5;
+    const format = this.panel.data.unitFormat;;
     const formatter = valueFormatter(format, decimals);
     const value = formatter(bucket.value);
 

@@ -1,9 +1,9 @@
 'use strict';
 
-System.register([], function (_export, _context) {
+System.register(['app/core/utils/kbn'], function (_export, _context) {
   "use strict";
 
-  var CarpetplotOptionsEditorCtrl;
+  var kbn, _createClass, CarpetplotOptionsEditorCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -25,17 +25,50 @@ System.register([], function (_export, _context) {
   _export('carpetplotOptionsEditor', carpetplotOptionsEditor);
 
   return {
-    setters: [],
+    setters: [function (_appCoreUtilsKbn) {
+      kbn = _appCoreUtilsKbn.default;
+    }],
     execute: function () {
-      _export('CarpetplotOptionsEditorCtrl', CarpetplotOptionsEditorCtrl = function CarpetplotOptionsEditorCtrl($scope) {
-        _classCallCheck(this, CarpetplotOptionsEditorCtrl);
+      _createClass = function () {
+        function defineProperties(target, props) {
+          for (var i = 0; i < props.length; i++) {
+            var descriptor = props[i];
+            descriptor.enumerable = descriptor.enumerable || false;
+            descriptor.configurable = true;
+            if ("value" in descriptor) descriptor.writable = true;
+            Object.defineProperty(target, descriptor.key, descriptor);
+          }
+        }
 
-        $scope.editor = this;
-        this.panelCtrl = $scope.ctrl;
-        this.panel = this.panelCtrl.panel;
+        return function (Constructor, protoProps, staticProps) {
+          if (protoProps) defineProperties(Constructor.prototype, protoProps);
+          if (staticProps) defineProperties(Constructor, staticProps);
+          return Constructor;
+        };
+      }();
 
-        this.panelCtrl.render();
-      });
+      _export('CarpetplotOptionsEditorCtrl', CarpetplotOptionsEditorCtrl = function () {
+        function CarpetplotOptionsEditorCtrl($scope) {
+          _classCallCheck(this, CarpetplotOptionsEditorCtrl);
+
+          $scope.editor = this;
+          this.panelCtrl = $scope.ctrl;
+          this.panel = this.panelCtrl.panel;
+          this.unitFormats = kbn.getUnitFormats();
+
+          this.panelCtrl.render();
+        }
+
+        _createClass(CarpetplotOptionsEditorCtrl, [{
+          key: 'setUnitFormat',
+          value: function setUnitFormat(subItem) {
+            this.panel.data.unitFormat = subItem.value;
+            this.panelCtrl.render();
+          }
+        }]);
+
+        return CarpetplotOptionsEditorCtrl;
+      }());
 
       _export('CarpetplotOptionsEditorCtrl', CarpetplotOptionsEditorCtrl);
     }

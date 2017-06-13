@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (_export, _context) {
+System.register(['d3', 'jquery', 'moment', '../formatting'], function (_export, _context) {
   "use strict";
 
-  var d3, $, _, moment, valueFormatter, _createClass, TOOLTIP_PADDING_X, TOOLTIP_PADDING_Y, CarpetplotTooltip;
+  var d3, $, moment, valueFormatter, _createClass, TOOLTIP_PADDING_X, TOOLTIP_PADDING_Y, CarpetplotTooltip;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -16,8 +16,6 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
       d3 = _d.default;
     }, function (_jquery) {
       $ = _jquery.default;
-    }, function (_lodash) {
-      _ = _lodash.default;
     }, function (_moment) {
       moment = _moment.default;
     }, function (_formatting) {
@@ -54,7 +52,6 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
           this.dashboard = scope.ctrl.dashboard;
           this.panel = scope.ctrl.panel;
           this.carpetPanel = elem;
-          this.mouseOverPoint = false;
 
           elem.on('mouseover', this.onMouseOver.bind(this));
           elem.on('mouseleave', this.onMouseLeave.bind(this));
@@ -63,7 +60,7 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
         _createClass(CarpetplotTooltip, [{
           key: 'onMouseOver',
           value: function onMouseOver(e) {
-            if (!this.panel.tooltip.show || !this.scope.ctrl.data || !this.scope.ctrl.data.data) {
+            if (!this.panel.tooltip.show || !this.scope.hasData()) {
               return;
             }
 
@@ -102,31 +99,20 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
           }
         }, {
           key: 'show',
-          value: function show(event, pos, data) {
-            if (!this.panel.tooltip.show || !data) {
-              return;
-            }
-
-            // shared tooltip mode
-            if (event.panelRelY) {
-              return;
-            }
-
-            if (!this.isInChart(pos) || !this.tooltip) {
+          value: function show(pos, bucket) {
+            if (!this.panel.tooltip.show || !this.scope.isInChart(pos) || !bucket.hasValue()) {
               this.destroy();
               return;
             }
 
-            var bucket = this.getBucket(pos, data);
-            if (!bucket || bucket.value === null) {
-              this.destroy();
-              return;
+            if (!this.tooltip) {
+              this.add();
             }
 
             var tooltipTimeFormat = 'ddd YYYY-MM-DD HH:mm:ss';
             var time = this.dashboard.formatDate(bucket.time, tooltipTimeFormat);
-            var decimals = this.panel.tooltip.decimals || 5;
-            var format = this.panel.yAxis.format;
+            var decimals = this.panel.data.decimals;
+            var format = this.panel.data.unitFormat;
             var formatter = valueFormatter(format, decimals);
             var value = formatter(bucket.value);
 
@@ -134,61 +120,31 @@ System.register(['d3', 'jquery', 'lodash', 'moment', './formatting'], function (
 
             this.tooltip.html(tooltipHtml);
 
-            this.move(event);
-          }
-        }, {
-          key: 'isInChart',
-          value: function isInChart(pos) {
-            var x = pos.x,
-                y = pos.y;
-            var _scope = this.scope,
-                chartWidth = _scope.chartWidth,
-                chartHeight = _scope.chartHeight;
-
-
-            return x > 0 && x < chartWidth && y > 0 && y < chartHeight;
-          }
-        }, {
-          key: 'getBucket',
-          value: function getBucket(pos, data) {
-            var x = pos.x,
-                y = pos.y;
-            var _scope2 = this.scope,
-                fragment = _scope2.fragment,
-                xFrom = _scope2.xFrom;
-
-
-            var xTime = this.scope.xScale.invert(x);
-            var yTime = this.scope.yScale.invert(y);
-
-            var dayIndex = moment(xTime).startOf('day').diff(xFrom, 'days');
-            var bucketIndex = fragment.getBucketIndex(moment(yTime));
-
-            return _.has(data, 'data[' + dayIndex + '].buckets[' + bucketIndex + ']') ? {
-              time: fragment.getTime(data.data[dayIndex].time, bucketIndex),
-              value: data.data[dayIndex].buckets[bucketIndex]
-            } : null;
+            this.move(pos);
           }
         }, {
           key: 'move',
-          value: function move(event) {
+          value: function move(pos) {
             if (!this.tooltip) {
               return;
             }
 
             var elem = $(this.tooltip.node())[0];
+            var pageX = pos.pageX,
+                pageY = pos.pageY;
+
             var tooltipWidth = elem.clientWidth;
             var tooltipHeight = elem.clientHeight;
 
-            var left = event.pageX + TOOLTIP_PADDING_X;
-            var top = event.pageY + TOOLTIP_PADDING_Y;
+            var left = pageX + TOOLTIP_PADDING_X;
+            var top = pageY + TOOLTIP_PADDING_Y;
 
-            if (event.pageX + tooltipWidth + 40 > window.innerWidth) {
-              left = event.pageX - tooltipWidth - TOOLTIP_PADDING_X;
+            if (pageX + tooltipWidth + 40 > window.innerWidth) {
+              left = pageX - tooltipWidth - TOOLTIP_PADDING_X;
             }
 
-            if (event.pageY - window.pageYOffset + tooltipHeight + 20 > window.innerHeight) {
-              top = event.pageY - tooltipHeight - TOOLTIP_PADDING_Y;
+            if (pageY - window.pageYOffset + tooltipHeight + 20 > window.innerHeight) {
+              top = pageY - tooltipHeight - TOOLTIP_PADDING_Y;
             }
 
             return this.tooltip.style('left', left + 'px').style('top', top + 'px');

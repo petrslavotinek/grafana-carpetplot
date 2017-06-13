@@ -15,6 +15,12 @@ export const aggregate = (type) => {
   return (values) => func(values);
 };
 
+export const aggregatesMap = [
+  { name: 'Average', value: AVG },
+  { name: 'Sum', value: SUM },
+  { name: 'Count', value: CNT },
+];
+
 export default {
   AVG,
   SUM,

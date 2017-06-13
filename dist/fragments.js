@@ -3,7 +3,7 @@
 System.register(['moment'], function (_export, _context) {
   "use strict";
 
-  var moment, _fragments, MINUTE, QUARTER, HOUR, fragments, getFragment;
+  var moment, _fragments, MINUTE, QUARTER, HOUR, fragments, fragmentsMap, getFragment;
 
   function _defineProperty(obj, key, value) {
     if (key in obj) {
@@ -73,6 +73,10 @@ System.register(['moment'], function (_export, _context) {
           return moment.utc(time).add(1, 'hour');
         }
       }), _fragments);
+
+      _export('fragmentsMap', fragmentsMap = [{ name: 'Minute', value: MINUTE }, { name: '15 minutes', value: QUARTER }, { name: 'Hour', value: HOUR }]);
+
+      _export('fragmentsMap', fragmentsMap);
 
       _export('getFragment', getFragment = function getFragment(fragmentType) {
         return fragments[fragmentType];

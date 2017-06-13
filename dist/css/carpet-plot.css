@@ -1,10 +1,17 @@
 .carpetplot-panel {
-  cursor: crosshair; }
+  cursor: crosshair;
+  position: relative; }
   .carpetplot-panel .carpet-legend text,
   .carpetplot-panel .tick text {
     font-size: .875rem; }
   .carpetplot-panel .carpet-selection {
     opacity: .5; }
+  .carpetplot-panel canvas {
+    position: absolute; }
+  .carpetplot-panel svg {
+    position: absolute;
+    top: 0;
+    left: 0; }
 
 .carpetplot-wrapper.light .carpetplot-panel .carpet-legend text,
 .carpetplot-wrapper.light .carpetplot-panel .tick text {

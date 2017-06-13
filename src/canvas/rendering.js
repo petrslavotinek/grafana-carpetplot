@@ -5,9 +5,9 @@ import { tickStep } from 'app/core/utils/ticks';
 import moment from 'moment';
 import $ from 'jquery';
 
-import { getFragment } from './fragments';
+import { getFragment } from '../fragments';
 import CarpetplotTooltip from './tooltip';
-import { valueFormatter } from './formatting';
+import { valueFormatter } from '../formatting';
 
 const
   DEFAULT_X_TICK_SIZE_PX = 100,
@@ -19,7 +19,7 @@ const
   LEGEND_TOP_MARGIN = 10;
 
 export default function link(scope, elem, attrs, ctrl) {
-  let data, panel, timeRange, carpet;
+  let data, panel, timeRange, carpet, canvas, context;
 
   const $carpet = elem.find('.carpetplot-panel');
   const tooltip = new CarpetplotTooltip($carpet, scope);
@@ -37,6 +37,8 @@ export default function link(scope, elem, attrs, ctrl) {
     colorScale, fragment,
     mouseUpHandler,
     originalPointColor,
+    pointWidth, pointHeight,
+    highlightedBucket,
     $canvas;
 
   const selection = {
@@ -54,17 +56,16 @@ export default function link(scope, elem, attrs, ctrl) {
     if (!data.data) { return; }
 
     [min, max] = getMinMax();
-
-    addCarpetplotCanvas();
-    addAxes();
-    addLegend();
-
     colorScale = getColorScale(min, max);
 
-    addPoints(colorScale);
+    addCarpetplotSvg();
+    addAxes();
+    addLegend();
+    addCanvas();
+    addPoints();
   }
 
-  function addCarpetplotCanvas() {
+  function addCarpetplotSvg() {
     width = Math.floor($carpet.width());
     height = ctrl.height;
 
@@ -102,7 +103,7 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function addYAxis() {
-    scope.yScale = yScale = d3.scaleTime()
+    yScale = d3.scaleTime()
       .domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')])
       .range([chartHeight, 0]);
 
@@ -143,7 +144,7 @@ export default function link(scope, elem, attrs, ctrl) {
     xTo = moment(data.data[data.data.length - 1].time).startOf('day').add(1, 'day');
     days = xTo.diff(xFrom, 'days');
 
-    scope.xScale = xScale = d3.scaleTime()
+    xScale = d3.scaleTime()
       .domain([xFrom, xTo])
       .range([0, chartWidth]);
 
@@ -166,11 +167,13 @@ export default function link(scope, elem, attrs, ctrl) {
       .attr('dy', '.15em')
       .attr('y', 0)
       .attr('transform', `translate(${5 + dayWidth / 2},${posY + chartHeight - 10}) rotate(-65)`);
-    carpet.select('.axis-x').selectAll('.tick line').remove();
+    carpet.select('.axis-x').selectAll('.tick line, .domain').remove();
     carpet.select('.axis-x').select('.tick:last-child').remove();
 
-    addDayTicks(posX, posY, d3.timeSaturday.every(1));
-    addDayTicks(posX, posY, d3.timeMonday.every(1));
+    if (panel.xAxis.showWeekends && dayWidth >= panel.xAxis.minBucketWidthToShowWeekends) {
+      addDayTicks(posX, posY, d3.timeSaturday.every(1));
+      addDayTicks(posX, posY, d3.timeMonday.every(1));
+    }
   }
 
   function addDayTicks(posX, posY, range) {
@@ -189,7 +192,7 @@ export default function link(scope, elem, attrs, ctrl) {
     const axis = carpet.select('.axis-x');
     if (!axis.empty()) {
       const totalHeight = $(axis.node()).height();
-      return Math.max(0, totalHeight - chartHeight);
+      return Math.max(totalHeight, totalHeight - chartHeight);
     }
     return 0;
   }
@@ -206,63 +209,68 @@ export default function link(scope, elem, attrs, ctrl) {
     return d3.timeMonth.every(1);
   }
 
-  function addPoints(colorScale) {
-    const container = carpet.insert('g', ':first-child')
-      .attr('class', 'carpet-container')
-      .attr('transform', `translate(${yAxisWidth},${margin.top})`);
+  function addCanvas() {
+    if (canvas) {
+      canvas.remove();
+    }
 
-    $canvas = $(container.node());
+    canvas = d3.select($carpet[0])
+      .insert('canvas', ':first-child')
+      .attr('width', chartWidth)
+      .attr('height', chartHeight)
+      .style('left', `${yAxisWidth}px`)
+      .style('top', `${margin.top}px`);
 
-    const cols = container
-      .selectAll('.carpet-col')
-      .data(data.data)
-      .enter()
-      .append('g')
-      .attr('transform', (day) => `translate(${xScale(day.time.toDate())},0)`);
+    $canvas = $(canvas.node());
 
-    const width = Math.max(0, chartWidth / days);
-    const height = Math.max(0, chartHeight / fragment.count);
+    context = canvas.node().getContext('2d');
+  }
+
+  function addPoints() {
+    const customBase = document.createElement('custom');
+
+    const container = d3.select(customBase);
+
+    pointWidth = Math.max(0, chartWidth / days);
+    pointHeight = Math.max(0, chartHeight / fragment.count);
 
     const pointScale = d3.scaleLinear()
       .domain([fragment.count, 0])
-      .range([chartHeight, 0])
+      .range([chartHeight, 0]);
+
+    const cols = container
+      .selectAll('custom.carpet-col')
+      .data(data.data)
+      .enter()
+      .append('custom')
+      .attr('class', 'carpet-col');
 
     const points = cols
-      .selectAll('.carpet-point')
-      .data((d, i) => d.buckets)
+      .selectAll('custom.carpet-point')
+      .data((d, i) => d.buckets.map(value => ({
+        value,
+        time: d.time
+      })))
       .enter()
-      .append('rect')
+      .append('custom')
       .attr('class', 'carpet-point')
-      .attr('fill', value => value === null ? panel.color.nullColor : colorScale(value))
-      .attr('x', 0)
-      .attr('y', (d, i) => pointScale(i))
-      .attr('width', width)
-      .attr('height', height)
-      .attr('title', (d, i) => `${i}: ${d}`);
+      .attr('fillStyle', ({ value }) => value === null ? panel.color.nullColor : colorScale(value))
+      .attr('x', (d) => xScale(d.time.toDate()))
+      .attr('y', (d, i) => pointScale(i));
 
-    const $points = $carpet.find('.carpet-point');
-    $points
-      .on('mouseenter', (event) => {
-        tooltip.mouseOverPoint = true;
-        highlightPoint(event);
-      })
-      .on('mouseleave', (event) => {
-        tooltip.mouseOverPoint = false;
-        resetPointHighLight(event);
+    drawPoints(cols);
+  }
+
+  function drawPoints(cols) {
+    context.clearRect(0, 0, chartWidth, chartHeight);
+
+    const elements = cols.selectAll('custom.carpet-point')
+      .each(function (d, i) {
+        const node = d3.select(this);
+
+        context.fillStyle = node.attr('fillStyle');
+        context.fillRect(node.attr('x'), node.attr('y'), pointWidth, pointHeight);
       });
-  }
-
-  function highlightPoint(event) {
-    const color = d3.select(event.target).style('fill');
-    const highlightColor = d3.color(color).darker(1);
-    const currentPoint = d3.select(event.target);
-    originalPointColor = color;
-    currentPoint.style('fill', highlightColor);
-  }
-
-  function resetPointHighLight(event) {
-    d3.select(event.target)
-      .style('fill', originalPointColor);
   }
 
   function getMinMax() {
@@ -291,10 +299,11 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function onMouseDown(event) {
-    selection.active = true;
     const pos = getMousePos(event);
-    const posX = pos.x + yAxisWidth;
-    selection.x1 = posX;
+    if (!isInChart(pos)) { return; }
+
+    selection.active = true;
+    selection.x1 = pos.x;
 
     mouseUpHandler = () => onMouseUp();
 
@@ -309,8 +318,8 @@ export default function link(scope, elem, attrs, ctrl) {
     const selectionRange = Math.abs(selection.x2 - selection.x1);
 
     if (selection.x2 >= 0 && selectionRange > MIN_SELECTION_WIDTH) {
-      const timeFrom = xScale.invert(Math.min(selection.x1, selection.x2) - yAxisWidth);
-      const timeTo = xScale.invert(Math.max(selection.x1, selection.x2) - yAxisWidth);
+      const timeFrom = moment(xScale.invert(Math.min(selection.x1, selection.x2))).startOf('day');
+      const timeTo = moment(xScale.invert(Math.max(selection.x1, selection.x2))).startOf('day').add(1, 'day');
 
       ctrl.timeSrv.setTime({
         from: moment.utc(timeFrom),
@@ -330,44 +339,99 @@ export default function link(scope, elem, attrs, ctrl) {
     if (!carpet) { return; }
 
     const pos = getMousePos(event);
-    const posX = pos.x + yAxisWidth;
 
     if (selection.active) {
       clearCrosshair();
       tooltip.destroy();
 
-      selection.x2 = posX;
+      selection.x2 = pos.x;
       drawSelection(selection.x1, selection.x2);
     } else {
-      drawCrosshair(posX);
-      tooltip.show(event, pos, data);
+      drawCrosshair(pos);
+
+      const bucket = getBucket(pos);
+      tooltip.show(pos, bucket);
+      highlightPoint(pos, bucket);
     }
   }
 
-  function drawCrosshair(posX) {
-    if (!carpet) { return; }
+  function highlightPoint(pos, bucket) {
+    if (!isInChart(pos) || !bucket || !bucket.hasValue()) {
+      resetPointHighLight();
+      return;
+    }
 
-    carpet.selectAll('.heatmap-crosshair').remove();
+    if (bucket.equals(highlightedBucket)) {
+      return;
+    } else {
+      resetPointHighLight();
+    }
 
-    carpet.append('g')
-      .attr('class', 'heatmap-crosshair')
-      .attr('transform', `translate(${posX},0)`)
-      .append('line')
-      .attr('x1', 1)
-      .attr('y1', chartTop)
-      .attr('x2', 1)
-      .attr('y2', chartBottom)
-      .attr('stroke-width', 1);
+    highlightedBucket = bucket;
 
+    const { value, x, y } = bucket;
+
+    const color = colorScale(value);
+    const highlightColor = d3.color(color).darker(1);
+    originalPointColor = color;
+
+    context.fillStyle = highlightColor;
+    context.fillRect(x, y, pointWidth, pointHeight);
+  }
+
+  function resetPointHighLight() {
+    if (!highlightedBucket) { return; }
+
+    const { x, y } = highlightedBucket;
+    context.fillStyle = originalPointColor;
+    context.fillRect(x, y, pointWidth, pointHeight);
+
+    highlightedBucket = null;
   }
 
   function getMousePos(event) {
     const { left, top } = $canvas[0].getBoundingClientRect();
+    const { pageX, pageY } = event;
     const pos = {
-      x: event.pageX - window.scrollX - left,
-      y: event.pageY - window.scrollY - top
+      x: pageX - window.scrollX - left,
+      y: pageY - window.scrollY - top,
+      pageX,
+      pageY
     };
     return pos;
+  }
+
+  function drawCrosshair(pos) {
+    if (!carpet || !isInChart(pos)) {
+      clearCrosshair();
+      return;
+    }
+
+    carpet.selectAll('.heatmap-crosshair').remove();
+
+    const x = pos.x + yAxisWidth;
+    const y = pos.y + chartTop;
+
+    const crosshair = carpet.append('g')
+      .attr('class', 'heatmap-crosshair');
+
+    if (panel.xAxis.showCrosshair) {
+      crosshair.append('line')
+        .attr('x1', x)
+        .attr('y1', chartTop)
+        .attr('x2', x)
+        .attr('y2', chartBottom)
+        .attr('stroke-width', 1);
+    }
+
+    if (panel.yAxis.showCrosshair) {
+      crosshair.append('line')
+        .attr('x1', yAxisWidth)
+        .attr('y1', y)
+        .attr('x2', yAxisWidth + chartWidth)
+        .attr('y2', y)
+        .attr('stroke-width', 1);
+    }
   }
 
   function clearCrosshair() {
@@ -380,7 +444,7 @@ export default function link(scope, elem, attrs, ctrl) {
     if (!carpet) { return; }
 
     carpet.selectAll('.carpet-selection').remove();
-    const selectionX = Math.min(posX1, posX2);
+    const selectionX = Math.min(posX1, posX2) + yAxisWidth;
     const selectionWidth = Math.abs(posX1 - posX2);
 
     if (selectionWidth > MIN_SELECTION_WIDTH) {
@@ -415,8 +479,8 @@ export default function link(scope, elem, attrs, ctrl) {
   function addLegend() {
     if (!panel.legend.show) { return; }
 
-    const decimals = panel.tooltip.decimals || 5;
-    const format = panel.yAxis.format;
+    const decimals = panel.data.decimals;
+    const format = panel.data.unitFormat;
     const formatter = valueFormatter(format, decimals);
 
     const legendContainer = carpet.append('g')
@@ -491,6 +555,49 @@ export default function link(scope, elem, attrs, ctrl) {
       .attr("fill", d => legendColorScale(d));
   }
 
+  // Helpers
+
+  function isInChart(pos) {
+    const { x, y } = pos;
+
+    return x > 0
+      && x < chartWidth
+      && y > 0
+      && y < chartHeight;
+  }
+
+  function getBucket(pos) {
+    const { x, y } = pos;
+
+    const xTime = moment(xScale.invert(x)).startOf('day');
+    const yTime = moment(yScale.invert(y));
+
+    const dayIndex = xTime.diff(xFrom, 'days');
+    const bucketIndex = fragment.getBucketIndex(yTime);
+
+    const bucketX = xScale(xTime.toDate());
+    const bucketY = pointHeight * bucketIndex;
+
+    return _.has(data, `data[${dayIndex}].buckets[${bucketIndex}]`)
+      ? {
+        x: bucketX,
+        y: bucketY,
+        time: fragment.getTime(data.data[dayIndex].time, bucketIndex),
+        value: data.data[dayIndex].buckets[bucketIndex],
+        hasValue() {
+          return this.value !== null;
+        },
+        equals(bucket) {
+          return bucket && bucket.x === this.x && bucket.y === this.y;
+        }
+      }
+      : null;
+  }
+
+  function hasData() {
+    return data && data.data;
+  }
+
   // Render
 
   function render() {
@@ -506,13 +613,8 @@ export default function link(scope, elem, attrs, ctrl) {
 
     addCarpetplot();
 
-    scope.yAxisWidth = yAxisWidth;
-    scope.xAxisHeight = xAxisHeight;
-    scope.chartHeight = chartHeight;
-    scope.chartWidth = chartWidth;
-    scope.chartTop = chartTop;
-    scope.fragment = fragment;
-    scope.xFrom = xFrom;
+    scope.hasData = hasData;
+    scope.isInChart = isInChart;
   }
 
   $carpet.on('mousedown', onMouseDown);

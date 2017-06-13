@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/kbn', './data-converter', './aggregates', './fragments', './rendering', './options-editor', './css/carpet-plot.css!'], function (_export, _context) {
+System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/kbn', './data-converter', './aggregates', './fragments', './svg/rendering', './canvas/rendering', './options-editor', './css/carpet-plot.css!'], function (_export, _context) {
   "use strict";
 
-  var MetricsPanelCtrl, _, contextSrv, kbn, createConverter, aggregates, fragments, rendering, carpetplotOptionsEditor, _createClass, panelDefaults, colorSchemes, fragmentOptions, aggregateOptions, CarpetPlotCtrl;
+  var MetricsPanelCtrl, _, contextSrv, kbn, createConverter, aggregates, aggregatesMap, fragments, fragmentsMap, svgRendering, canvasRendering, carpetplotOptionsEditor, _createClass, CANVAS, SVG, panelDefaults, renderer, colorSchemes, CarpetPlotCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -48,10 +48,14 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
       createConverter = _dataConverter.default;
     }, function (_aggregates) {
       aggregates = _aggregates.default;
+      aggregatesMap = _aggregates.aggregatesMap;
     }, function (_fragments) {
       fragments = _fragments.default;
-    }, function (_rendering) {
-      rendering = _rendering.default;
+      fragmentsMap = _fragments.fragmentsMap;
+    }, function (_svgRendering) {
+      svgRendering = _svgRendering.default;
+    }, function (_canvasRendering) {
+      canvasRendering = _canvasRendering.default;
     }, function (_optionsEditor) {
       carpetplotOptionsEditor = _optionsEditor.carpetplotOptionsEditor;
     }, function (_cssCarpetPlotCss) {}],
@@ -74,6 +78,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
         };
       }();
 
+      CANVAS = 'CANVAS';
+      SVG = 'SVG';
       panelDefaults = {
         aggregate: aggregates.AVG,
         fragment: fragments.HOUR,
@@ -86,20 +92,27 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           max: null
         },
         xAxis: {
-          show: true
+          show: true,
+          showWeekends: true,
+          minBucketWidthToShowWeekends: 4,
+          showCrosshair: true
         },
         yAxis: {
-          format: 'short',
-          show: true
+          show: true,
+          showCrosshair: false
         },
         tooltip: {
-          show: true,
-          decimals: null
+          show: true
         },
         legend: {
           show: true
+        },
+        data: {
+          unitFormat: 'short',
+          decimals: null
         }
       };
+      renderer = CANVAS;
       colorSchemes = [
       // Diverging
       { name: 'Spectral', value: 'interpolateSpectral', invert: 'always' }, { name: 'RdYlGn', value: 'interpolateRdYlGn', invert: 'always' },
@@ -109,8 +122,6 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
 
       // Sequential (Multi-Hue)
       { name: 'BuGn', value: 'interpolateBuGn', invert: 'dark' }, { name: 'BuPu', value: 'interpolateBuPu', invert: 'dark' }, { name: 'GnBu', value: 'interpolateGnBu', invert: 'dark' }, { name: 'OrRd', value: 'interpolateOrRd', invert: 'dark' }, { name: 'PuBuGn', value: 'interpolatePuBuGn', invert: 'dark' }, { name: 'PuBu', value: 'interpolatePuBu', invert: 'dark' }, { name: 'PuRd', value: 'interpolatePuRd', invert: 'dark' }, { name: 'RdPu', value: 'interpolateRdPu', invert: 'dark' }, { name: 'YlGnBu', value: 'interpolateYlGnBu', invert: 'dark' }, { name: 'YlGn', value: 'interpolateYlGn', invert: 'dark' }, { name: 'YlOrBr', value: 'interpolateYlOrBr', invert: 'dark' }, { name: 'YlOrRd', value: 'interpolateYlOrRd', invert: 'darm' }];
-      fragmentOptions = [{ name: 'Minute', value: fragments.MINUTE }, { name: '15 minutes', value: fragments.QUARTER }, { name: 'Hour', value: fragments.HOUR }];
-      aggregateOptions = [{ name: 'Average', value: aggregates.AVG }, { name: 'Sum', value: aggregates.SUM }, { name: 'Count', value: aggregates.CNT }];
 
       _export('CarpetPlotCtrl', CarpetPlotCtrl = function (_MetricsPanelCtrl) {
         _inherits(CarpetPlotCtrl, _MetricsPanelCtrl);
@@ -142,8 +153,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           _this.data = {};
           _this.timeSrv = timeSrv;
           _this.colorSchemes = colorSchemes;
-          _this.fragmentOptions = fragmentOptions;
-          _this.aggregateOptions = aggregateOptions;
+          _this.fragmentOptions = fragmentsMap;
+          _this.aggregateOptions = aggregatesMap;
           _this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
           _.defaultsDeep(_this.panel, panelDefaults);
@@ -169,7 +180,18 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
         }, {
           key: 'link',
           value: function link(scope, elem, attrs, ctrl) {
-            rendering(scope, elem, attrs, ctrl);
+            switch (renderer) {
+              case CANVAS:
+                {
+                  canvasRendering(scope, elem, attrs, ctrl);
+                  break;
+                }
+              case SVG:
+                {
+                  svgRendering(scope, elem, attrs, ctrl);
+                  break;
+                }
+            }
           }
         }]);
 

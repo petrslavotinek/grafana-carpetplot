@@ -14,7 +14,7 @@ System.register(['app/core/utils/kbn', 'lodash'], function (_export, _context) {
     execute: function () {
       _export('valueFormatter', valueFormatter = function valueFormatter(format, decimals) {
         return function (value) {
-          return kbn.valueFormats[format](value, _.isInteger(value) ? 0 : decimals);
+          return kbn.valueFormats[format](value, _.isInteger(value) ? 0 : decimals || 5);
         };
       });
 

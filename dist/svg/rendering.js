@@ -1,6 +1,6 @@
 'use strict';
 
-System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', './fragments', './tooltip', './formatting'], function (_export, _context) {
+System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', '../fragments', './tooltip', '../formatting'], function (_export, _context) {
   "use strict";
 
   var d3, _, appEvents, contextSrv, tickStep, moment, $, getFragment, CarpetplotTooltip, valueFormatter, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN;
@@ -61,17 +61,15 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       min = _getMinMax2[0];
       max = _getMinMax2[1];
 
-
-      addCarpetplotCanvas();
-      addAxes();
-      addLegend();
-
       colorScale = getColorScale(min, max);
 
+      addCarpetplotSvg();
+      addAxes();
+      addLegend();
       addPoints(colorScale);
     }
 
-    function addCarpetplotCanvas() {
+    function addCarpetplotSvg() {
       width = Math.floor($carpet.width());
       height = ctrl.height;
 
@@ -151,11 +149,13 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var posY = margin.top;
       var posX = yAxisWidth;
       carpet.append('g').attr('class', 'axis axis-x').attr('transform', 'translate(' + posX + ',' + posY + ')').call(xAxis).selectAll('text').style('text-anchor', 'end').attr('dx', '-.8em').attr('dy', '.15em').attr('y', 0).attr('transform', 'translate(' + (5 + dayWidth / 2) + ',' + (posY + chartHeight - 10) + ') rotate(-65)');
-      carpet.select('.axis-x').selectAll('.tick line').remove();
+      carpet.select('.axis-x').selectAll('.tick line, .domain').remove();
       carpet.select('.axis-x').select('.tick:last-child').remove();
 
-      addDayTicks(posX, posY, d3.timeSaturday.every(1));
-      addDayTicks(posX, posY, d3.timeMonday.every(1));
+      if (dayWidth >= 4) {
+        addDayTicks(posX, posY, d3.timeSaturday.every(1));
+        addDayTicks(posX, posY, d3.timeMonday.every(1));
+      }
     }
 
     function addDayTicks(posX, posY, range) {
@@ -168,7 +168,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var axis = carpet.select('.axis-x');
       if (!axis.empty()) {
         var totalHeight = $(axis.node()).height();
-        return Math.max(0, totalHeight - chartHeight);
+        return Math.max(totalHeight, totalHeight - chartHeight);
       }
       return 0;
     }
@@ -190,33 +190,48 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       $canvas = $(container.node());
 
-      var cols = container.selectAll('.carpet-col').data(data.data).enter().append('g').attr('transform', function (day) {
-        return 'translate(' + xScale(day.time.toDate()) + ',0)';
-      });
-
       var width = Math.max(0, chartWidth / days);
       var height = Math.max(0, chartHeight / fragment.count);
 
       var pointScale = d3.scaleLinear().domain([fragment.count, 0]).range([chartHeight, 0]);
 
-      var points = cols.selectAll('.carpet-point').data(function (d, i) {
-        return d.buckets;
-      }).enter().append('rect').attr('class', 'carpet-point').attr('fill', function (value) {
+      var points = container.selectAll('.carpet-col').data(data.data).enter().selectAll('.carpet-point').data(function (d, i) {
+        return d.buckets.map(function (value) {
+          return {
+            value: value,
+            time: d.time
+          };
+        });
+      }).enter().append('rect').attr('class', 'carpet-point').attr('fill', function (_ref) {
+        var value = _ref.value;
         return value === null ? panel.color.nullColor : colorScale(value);
-      }).attr('x', 0).attr('y', function (d, i) {
+      }).attr('x', function (d) {
+        return xScale(d.time.toDate());
+      }).attr('y', function (d, i) {
         return pointScale(i);
-      }).attr('width', width).attr('height', height).attr('title', function (d, i) {
-        return i + ': ' + d;
-      });
+      }).attr('width', width).attr('height', height);
+
+      // const cols = container
+      //   .selectAll('.carpet-col')
+      //   .data(data.data)
+      //   .enter()
+      //   .append('g')
+      //   .attr('transform', (day) => `translate(${xScale(day.time.toDate())},0)`);
+
+      // const points = cols
+      //   .selectAll('.carpet-point')
+      //   .data((d, i) => d.buckets)
+      //   .enter()
+      //   .append('rect')
+      //   .attr('class', 'carpet-point')
+      //   .attr('fill', value => value === null ? panel.color.nullColor : colorScale(value))
+      //   .attr('x', 0)
+      //   .attr('y', (d, i) => pointScale(i))
+      //   .attr('width', width)
+      //   .attr('height', height);
 
       var $points = $carpet.find('.carpet-point');
-      $points.on('mouseenter', function (event) {
-        tooltip.mouseOverPoint = true;
-        highlightPoint(event);
-      }).on('mouseleave', function (event) {
-        tooltip.mouseOverPoint = false;
-        resetPointHighLight(event);
-      });
+      $points.on('mouseenter', highlightPoint).on('mouseleave', resetPointHighLight);
     }
 
     function highlightPoint(event) {
@@ -313,7 +328,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function drawCrosshair(posX) {
-      if (!carpet) {
+      if (!carpet || posX < yAxisWidth || posX > yAxisWidth + chartWidth) {
+        clearCrosshair();
         return;
       }
 
@@ -382,8 +398,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         return;
       }
 
-      var decimals = panel.tooltip.decimals || 5;
-      var format = panel.yAxis.format;
+      var decimals = panel.data.decimals;
+      var format = panel.data.unitFormat;;
       var formatter = valueFormatter(format, decimals);
 
       var legendContainer = carpet.append('g').attr('class', 'carpet-legend').attr('transform', 'translate(' + yAxisWidth + ',' + (margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN) + ')');

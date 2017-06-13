@@ -32,6 +32,12 @@ const fragments = {
   }
 };
 
+export const fragmentsMap = [
+  { name: 'Minute', value: MINUTE },
+  { name: '15 minutes', value: QUARTER },
+  { name: 'Hour', value: HOUR }
+];
+
 export const getFragment = (fragmentType) => fragments[fragmentType];
 
 export default {

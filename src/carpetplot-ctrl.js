@@ -4,11 +4,15 @@ import { contextSrv } from 'app/core/core';
 import kbn from 'app/core/utils/kbn';
 
 import createConverter from './data-converter';
-import aggregates from './aggregates';
-import fragments from './fragments';
-import rendering from './rendering';
+import aggregates, { aggregatesMap } from './aggregates';
+import fragments, { fragmentsMap } from './fragments';
+import svgRendering from './svg/rendering';
+import canvasRendering from './canvas/rendering';
 import { carpetplotOptionsEditor } from './options-editor';
 import './css/carpet-plot.css!';
+
+const CANVAS = 'CANVAS';
+const SVG = 'SVG';
 
 const panelDefaults = {
   aggregate: aggregates.AVG,
@@ -22,20 +26,28 @@ const panelDefaults = {
     max: null
   },
   xAxis: {
-    show: true
+    show: true,
+    showWeekends: true,
+    minBucketWidthToShowWeekends: 4,
+    showCrosshair: true
   },
   yAxis: {
-    format: 'short',
-    show: true
+    show: true,
+    showCrosshair: false
   },
   tooltip: {
-    show: true,
-    decimals: null
+    show: true
   },
   legend: {
     show: true
+  },
+  data: {
+    unitFormat: 'short',
+    decimals: null
   }
 };
+
+const renderer = CANVAS;
 
 const colorSchemes = [
   // Diverging
@@ -65,18 +77,6 @@ const colorSchemes = [
   { name: 'YlOrRd', value: 'interpolateYlOrRd', invert: 'darm' }
 ];
 
-const fragmentOptions = [
-  { name: 'Minute', value: fragments.MINUTE },
-  { name: '15 minutes', value: fragments.QUARTER },
-  { name: 'Hour', value: fragments.HOUR }
-];
-
-const aggregateOptions = [
-  { name: 'Average', value: aggregates.AVG },
-  { name: 'Sum', value: aggregates.SUM },
-  { name: 'Count', value: aggregates.CNT },
-];
-
 export class CarpetPlotCtrl extends MetricsPanelCtrl {
   static templateUrl = 'module.html';
 
@@ -87,8 +87,8 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
     this.data = {};
     this.timeSrv = timeSrv;
     this.colorSchemes = colorSchemes;
-    this.fragmentOptions = fragmentOptions;
-    this.aggregateOptions = aggregateOptions;
+    this.fragmentOptions = fragmentsMap;
+    this.aggregateOptions = aggregatesMap;
     this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
     _.defaultsDeep(this.panel, panelDefaults);
@@ -122,6 +122,15 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
   }
 
   link(scope, elem, attrs, ctrl) {
-    rendering(scope, elem, attrs, ctrl);
+    switch (renderer) {
+      case CANVAS: {
+        canvasRendering(scope, elem, attrs, ctrl);
+        break;
+      }
+      case SVG: {
+        svgRendering(scope, elem, attrs, ctrl);
+        break;
+      }
+    }
   }
 }
