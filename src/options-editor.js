@@ -21,7 +21,7 @@ export function carpetplotOptionsEditor() {
   return {
     restrict: 'E',
     scope: true,
-    templateUrl: 'public/plugins/carpetplot/partials/options-editor.html',
+    templateUrl: 'public/plugins/petrslavotinek-carpetplot-panel/partials/options-editor.html',
     controller: CarpetplotOptionsEditorCtrl,
   };
 }
