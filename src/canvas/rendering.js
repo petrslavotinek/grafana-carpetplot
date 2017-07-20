@@ -53,7 +53,7 @@ export default function link(scope, elem, attrs, ctrl) {
   });
 
   function addCarpetplot() {
-    if (!data.data) { return; }
+    if (!data.data || !data.data[0]) { return; }
 
     [min, max] = getMinMax();
     colorScale = getColorScale(min, max);

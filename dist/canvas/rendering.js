@@ -55,7 +55,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     });
 
     function addCarpetplot() {
-      if (!data.data) {
+      if (!data.data || !data.data[0]) {
         return;
       }
 
@@ -506,8 +506,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       return legend.selectAll(".heatmap-color-legend-rect").data(valuesRange).enter().append("rect").attr("x", function (d) {
         return d;
-      }).attr("y", 0).attr("width", rangeStep + 1 // Overlap rectangles to prevent gaps
-      ).attr("height", legendHeight).attr("stroke-width", 0).attr("fill", function (d) {
+      }).attr("y", 0).attr("width", rangeStep + 1) // Overlap rectangles to prevent gaps
+      .attr("height", legendHeight).attr("stroke-width", 0).attr("fill", function (d) {
         return legendColorScale(d);
       });
     }
