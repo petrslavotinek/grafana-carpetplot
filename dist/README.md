@@ -22,7 +22,7 @@ Tested with InfluxDb data source.
   * Min: Minimum value corresponding to the leftmost color of the sceheme. If not set, is calculated as a minimum value in current visible data set.
   * Max: Maximum value corresponding to the rightmost color of the sceheme. If not set, is calculated as a maximum value in current visible data set.
 * Data
-  * Aggregate: Function used to aggregate values in a single bucket. (Average / Sum / Count)
+  * Aggregate: Function used to aggregate values in a single bucket. (Average / Sum / Count / Min / Max / First / Last)
   * Fragment: Fragment of a day. (Hour, 15 minutes, Minute)
   * Decimals: Number of decimals displayed in tooltip and legend.
   * Unit: Unit format used in tooltip and legend.
@@ -37,3 +37,7 @@ Tested with InfluxDb data source.
 * Legend:
   * Show: If selected, displays legend under graph.
 
+## Changelog
+
+* 0.0.2
+  * New aggregate functions: Min, Max, First, Last
