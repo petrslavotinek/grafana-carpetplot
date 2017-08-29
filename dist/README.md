@@ -19,6 +19,7 @@ Tested with InfluxDb data source.
 * Colors
   * Scheme: Color scheme to represent data values.
   * Null Color: Color to represent buckets with null value.
+  * Invert: inverts selected color schemes.
   * Min: Minimum value corresponding to the leftmost color of the sceheme. If not set, is calculated as a minimum value in current visible data set.
   * Max: Maximum value corresponding to the rightmost color of the sceheme. If not set, is calculated as a maximum value in current visible data set.
 * Data
@@ -30,8 +31,11 @@ Tested with InfluxDb data source.
   * Show weekends: If selected, displays lines marking beggining and end of weekends.
   * Min bucket width: Minimum required width of a bucket in px to enable displaying of weekend lines.
   * Show crosshair: If selected, displays crosshair in x axis on hover.
+  * Hide labels: Hides X axis labels.
+  * Label format: Changes format of X axis labels. 
 * Y Axis:
-  * Show crosshair: If selected, displays crosshair in y axis on hover.
+  * Show crosshair: If selected, displays crosshair in y axis on hover. WD = abbreviated weekday. M = month. D = day. Y = year.
+  * Hide labels: Hides Y axis labels.
 * Tooltip:
   * Show: If selected, displays tooltip on hover.
 * Legend:
@@ -40,4 +44,9 @@ Tested with InfluxDb data source.
 ## Changelog
 
 * 0.0.2
-  * New aggregate functions: Min, Max, First, Last
+  * New aggregate functions: Min, Max, First, Last.
+* 0.0.3
+  * Possibility to invert color scheme.
+  * Possibility to change X axis label format.
+  * Possibility to hide X axis labels.
+  * Possibility to hide Y axis labels.
