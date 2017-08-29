@@ -8,6 +8,7 @@ import $ from 'jquery';
 import { getFragment } from '../fragments';
 import CarpetplotTooltip from './tooltip';
 import { valueFormatter } from '../formatting';
+import { labelFormats } from '../xAxisLabelFormats';
 
 const
   DEFAULT_X_TICK_SIZE_PX = 100,
@@ -24,7 +25,7 @@ export default function link(scope, elem, attrs, ctrl) {
   const $carpet = elem.find('.carpetplot-panel');
   const tooltip = new CarpetplotTooltip($carpet, scope);
 
-  const margin = { left: 25, right: 15, top: 10, bottom: 65 };
+  const margin = { left: 25, right: 15, top: 10, bottom: 10 };
 
   let width, height,
     min, max,
@@ -81,16 +82,17 @@ export default function link(scope, elem, attrs, ctrl) {
 
   function addAxes() {
     legendHeight = panel.legend.show ? LEGEND_HEIGHT + LEGEND_TOP_MARGIN : 0;
-    chartHeight = height - margin.top - margin.bottom - legendHeight;
+    xAxisHeight = panel.xAxis.hideLabels ? 0 : getXAxisHeight();
+    chartHeight = height - margin.top - margin.bottom - legendHeight - xAxisHeight;
     chartTop = margin.top;
     chartBottom = chartTop + chartHeight;
 
     addYAxis();
-    yAxisWidth = getYAxisWidth() + Y_AXIS_TICK_PADDING;
+    yAxisWidth = panel.yAxis.hideLabels ? 0 : (getYAxisWidth() + Y_AXIS_TICK_PADDING);
     chartWidth = width - yAxisWidth - margin.right;
 
     addXAxis();
-    xAxisHeight = getXAxisHeight();
+    // xAxisHeight = getXAxisHeight();
 
     if (!panel.yAxis.show) {
       carpet.select('.axis-y').selectAll('line').style('opacity', 0);
@@ -114,18 +116,20 @@ export default function link(scope, elem, attrs, ctrl) {
       .tickSizeOuter(0)
       .tickPadding(Y_AXIS_TICK_PADDING);
 
-    carpet.append('g')
-      .attr('class', 'axis axis-y')
-      .call(yAxis);
+    if (!panel.yAxis.hideLabels) {
+      carpet.append('g')
+        .attr('class', 'axis axis-y')
+        .call(yAxis);
 
-    const posY = margin.top;
-    const posX = getYAxisWidth() + Y_AXIS_TICK_PADDING;
+      const posY = margin.top;
+      const posX = getYAxisWidth() + Y_AXIS_TICK_PADDING;
 
-    const yAxisGroup = carpet.select('.axis-y');
-    yAxisGroup.attr('transform', `translate(${posX},${posY})`);
-    yAxisGroup.select('.domain').remove();
-    yAxisGroup.select('.tick:first-child').remove();
-    yAxisGroup.selectAll('.tick line').remove();
+      const yAxisGroup = carpet.select('.axis-y');
+      yAxisGroup.attr('transform', `translate(${posX},${posY})`);
+      yAxisGroup.select('.domain').remove();
+      yAxisGroup.select('.tick:first-child').remove();
+      yAxisGroup.selectAll('.tick line').remove();
+    }
   }
 
   function getYAxisWidth() {
@@ -150,25 +154,28 @@ export default function link(scope, elem, attrs, ctrl) {
 
     const xAxis = d3.axisBottom(xScale)
       .ticks(getXAxisTicks(xFrom, xTo))
-      .tickFormat(d3.timeFormat('%a %m/%d'))
+      .tickFormat(d3.timeFormat(panel.xAxis.labelFormat))
       .tickSize(chartHeight);
 
     const dayWidth = chartWidth / days;
 
     const posY = margin.top;
     const posX = yAxisWidth;
-    carpet.append('g')
-      .attr('class', 'axis axis-x')
-      .attr('transform', `translate(${posX},${posY})`)
-      .call(xAxis)
-      .selectAll('text')
-      .style('text-anchor', 'end')
-      .attr('dx', '-.8em')
-      .attr('dy', '.15em')
-      .attr('y', 0)
-      .attr('transform', `translate(${5 + dayWidth / 2},${posY + chartHeight - 10}) rotate(-65)`);
-    carpet.select('.axis-x').selectAll('.tick line, .domain').remove();
-    carpet.select('.axis-x').select('.tick:last-child').remove();
+
+    if (!panel.xAxis.hideLabels) {
+      carpet.append('g')
+        .attr('class', 'axis axis-x')
+        .attr('transform', `translate(${posX},${posY})`)
+        .call(xAxis)
+        .selectAll('text')
+        .style('text-anchor', 'end')
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em')
+        .attr('y', 0)
+        .attr('transform', `translate(${5 + dayWidth / 2},${posY + chartHeight - 10}) rotate(-65)`);
+      carpet.select('.axis-x').selectAll('.tick line, .domain').remove();
+      carpet.select('.axis-x').select('.tick:last-child').remove();
+    }
 
     if (panel.xAxis.showWeekends && dayWidth >= panel.xAxis.minBucketWidthToShowWeekends) {
       addDayTicks(posX, posY, d3.timeSaturday.every(1));
@@ -189,12 +196,13 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function getXAxisHeight() {
-    const axis = carpet.select('.axis-x');
-    if (!axis.empty()) {
-      const totalHeight = $(axis.node()).height();
-      return Math.max(totalHeight, totalHeight - chartHeight);
-    }
-    return 0;
+    return labelFormats.find(({ value }) => value === panel.xAxis.labelFormat).height;
+    // const axis = carpet.select('.axis-x');
+    // if (!axis.empty()) {
+    //   const totalHeight = $(axis.node()).height();
+    //   return Math.max(totalHeight, totalHeight - chartHeight);
+    // }
+    // return 0;
   }
 
   function getXAxisTicks(from, to) {
@@ -284,7 +292,8 @@ export default function link(scope, elem, attrs, ctrl) {
   function getColorScale(min, max) {
     const colorScheme = _.find(ctrl.colorSchemes, { value: panel.color.colorScheme });
     const colorInterpolator = d3[colorScheme.value];
-    const colorScaleInverted = colorScheme.invert === 'always' || (colorScheme.invert === 'dark' && !contextSrv.user.lightTheme);
+    let colorScaleInverted = colorScheme.invert === 'always' || (colorScheme.invert === 'dark' && !contextSrv.user.lightTheme);
+    colorScaleInverted = panel.color.invert ? !colorScaleInverted : colorScaleInverted;
 
     const start = colorScaleInverted ? max : min;
     const end = colorScaleInverted ? min : max;
@@ -483,9 +492,12 @@ export default function link(scope, elem, attrs, ctrl) {
     const format = panel.data.unitFormat;
     const formatter = valueFormatter(format, decimals);
 
+    const legendY = yAxisWidth;
+    const legendX = margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN;
+
     const legendContainer = carpet.append('g')
       .attr('class', 'carpet-legend')
-      .attr('transform', `translate(${yAxisWidth},${margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN})`);
+      .attr('transform', `translate(${legendY},${legendX})`);
 
     const legendHeight = LEGEND_HEIGHT / 2;
     const labelMargin = 5;

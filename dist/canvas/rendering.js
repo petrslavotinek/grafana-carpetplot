@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', '../fragments', './tooltip', '../formatting'], function (_export, _context) {
+System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', '../fragments', './tooltip', '../formatting', '../xAxisLabelFormats'], function (_export, _context) {
   "use strict";
 
-  var d3, _, appEvents, contextSrv, tickStep, moment, $, getFragment, CarpetplotTooltip, valueFormatter, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN;
+  var d3, _, appEvents, contextSrv, tickStep, moment, $, getFragment, CarpetplotTooltip, valueFormatter, labelFormats, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN;
 
   function link(scope, elem, attrs, ctrl) {
     var data = void 0,
@@ -16,7 +16,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     var $carpet = elem.find('.carpetplot-panel');
     var tooltip = new CarpetplotTooltip($carpet, scope);
 
-    var margin = { left: 25, right: 15, top: 10, bottom: 65 };
+    var margin = { left: 25, right: 15, top: 10, bottom: 10 };
 
     var width = void 0,
         height = void 0,
@@ -88,16 +88,17 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
     function addAxes() {
       legendHeight = panel.legend.show ? LEGEND_HEIGHT + LEGEND_TOP_MARGIN : 0;
-      chartHeight = height - margin.top - margin.bottom - legendHeight;
+      xAxisHeight = panel.xAxis.hideLabels ? 0 : getXAxisHeight();
+      chartHeight = height - margin.top - margin.bottom - legendHeight - xAxisHeight;
       chartTop = margin.top;
       chartBottom = chartTop + chartHeight;
 
       addYAxis();
-      yAxisWidth = getYAxisWidth() + Y_AXIS_TICK_PADDING;
+      yAxisWidth = panel.yAxis.hideLabels ? 0 : getYAxisWidth() + Y_AXIS_TICK_PADDING;
       chartWidth = width - yAxisWidth - margin.right;
 
       addXAxis();
-      xAxisHeight = getXAxisHeight();
+      // xAxisHeight = getXAxisHeight();
 
       if (!panel.yAxis.show) {
         carpet.select('.axis-y').selectAll('line').style('opacity', 0);
@@ -116,16 +117,18 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         return moment(value).format('HH:mm');
       }).tickSizeInner(0 - width).tickSizeOuter(0).tickPadding(Y_AXIS_TICK_PADDING);
 
-      carpet.append('g').attr('class', 'axis axis-y').call(yAxis);
+      if (!panel.yAxis.hideLabels) {
+        carpet.append('g').attr('class', 'axis axis-y').call(yAxis);
 
-      var posY = margin.top;
-      var posX = getYAxisWidth() + Y_AXIS_TICK_PADDING;
+        var posY = margin.top;
+        var posX = getYAxisWidth() + Y_AXIS_TICK_PADDING;
 
-      var yAxisGroup = carpet.select('.axis-y');
-      yAxisGroup.attr('transform', 'translate(' + posX + ',' + posY + ')');
-      yAxisGroup.select('.domain').remove();
-      yAxisGroup.select('.tick:first-child').remove();
-      yAxisGroup.selectAll('.tick line').remove();
+        var yAxisGroup = carpet.select('.axis-y');
+        yAxisGroup.attr('transform', 'translate(' + posX + ',' + posY + ')');
+        yAxisGroup.select('.domain').remove();
+        yAxisGroup.select('.tick:first-child').remove();
+        yAxisGroup.selectAll('.tick line').remove();
+      }
     }
 
     function getYAxisWidth() {
@@ -148,15 +151,18 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       xScale = d3.scaleTime().domain([xFrom, xTo]).range([0, chartWidth]);
 
-      var xAxis = d3.axisBottom(xScale).ticks(getXAxisTicks(xFrom, xTo)).tickFormat(d3.timeFormat('%a %m/%d')).tickSize(chartHeight);
+      var xAxis = d3.axisBottom(xScale).ticks(getXAxisTicks(xFrom, xTo)).tickFormat(d3.timeFormat(panel.xAxis.labelFormat)).tickSize(chartHeight);
 
       var dayWidth = chartWidth / days;
 
       var posY = margin.top;
       var posX = yAxisWidth;
-      carpet.append('g').attr('class', 'axis axis-x').attr('transform', 'translate(' + posX + ',' + posY + ')').call(xAxis).selectAll('text').style('text-anchor', 'end').attr('dx', '-.8em').attr('dy', '.15em').attr('y', 0).attr('transform', 'translate(' + (5 + dayWidth / 2) + ',' + (posY + chartHeight - 10) + ') rotate(-65)');
-      carpet.select('.axis-x').selectAll('.tick line, .domain').remove();
-      carpet.select('.axis-x').select('.tick:last-child').remove();
+
+      if (!panel.xAxis.hideLabels) {
+        carpet.append('g').attr('class', 'axis axis-x').attr('transform', 'translate(' + posX + ',' + posY + ')').call(xAxis).selectAll('text').style('text-anchor', 'end').attr('dx', '-.8em').attr('dy', '.15em').attr('y', 0).attr('transform', 'translate(' + (5 + dayWidth / 2) + ',' + (posY + chartHeight - 10) + ') rotate(-65)');
+        carpet.select('.axis-x').selectAll('.tick line, .domain').remove();
+        carpet.select('.axis-x').select('.tick:last-child').remove();
+      }
 
       if (panel.xAxis.showWeekends && dayWidth >= panel.xAxis.minBucketWidthToShowWeekends) {
         addDayTicks(posX, posY, d3.timeSaturday.every(1));
@@ -171,12 +177,16 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function getXAxisHeight() {
-      var axis = carpet.select('.axis-x');
-      if (!axis.empty()) {
-        var totalHeight = $(axis.node()).height();
-        return Math.max(totalHeight, totalHeight - chartHeight);
-      }
-      return 0;
+      return labelFormats.find(function (_ref) {
+        var value = _ref.value;
+        return value === panel.xAxis.labelFormat;
+      }).height;
+      // const axis = carpet.select('.axis-x');
+      // if (!axis.empty()) {
+      //   const totalHeight = $(axis.node()).height();
+      //   return Math.max(totalHeight, totalHeight - chartHeight);
+      // }
+      // return 0;
     }
 
     function getXAxisTicks(from, to) {
@@ -222,8 +232,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
             time: d.time
           };
         });
-      }).enter().append('custom').attr('class', 'carpet-point').attr('fillStyle', function (_ref) {
-        var value = _ref.value;
+      }).enter().append('custom').attr('class', 'carpet-point').attr('fillStyle', function (_ref2) {
+        var value = _ref2.value;
         return value === null ? panel.color.nullColor : colorScale(value);
       }).attr('x', function (d) {
         return xScale(d.time.toDate());
@@ -257,6 +267,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var colorScheme = _.find(ctrl.colorSchemes, { value: panel.color.colorScheme });
       var colorInterpolator = d3[colorScheme.value];
       var colorScaleInverted = colorScheme.invert === 'always' || colorScheme.invert === 'dark' && !contextSrv.user.lightTheme;
+      colorScaleInverted = panel.color.invert ? !colorScaleInverted : colorScaleInverted;
 
       var start = colorScaleInverted ? max : min;
       var end = colorScaleInverted ? min : max;
@@ -464,7 +475,10 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var format = panel.data.unitFormat;
       var formatter = valueFormatter(format, decimals);
 
-      var legendContainer = carpet.append('g').attr('class', 'carpet-legend').attr('transform', 'translate(' + yAxisWidth + ',' + (margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN) + ')');
+      var legendY = yAxisWidth;
+      var legendX = margin.top + chartHeight + xAxisHeight + LEGEND_TOP_MARGIN;
+
+      var legendContainer = carpet.append('g').attr('class', 'carpet-legend').attr('transform', 'translate(' + legendY + ',' + legendX + ')');
 
       var legendHeight = LEGEND_HEIGHT / 2;
       var labelMargin = 5;
@@ -600,6 +614,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       CarpetplotTooltip = _tooltip.default;
     }, function (_formatting) {
       valueFormatter = _formatting.valueFormatter;
+    }, function (_xAxisLabelFormats) {
+      labelFormats = _xAxisLabelFormats.labelFormats;
     }],
     execute: function () {
       _slicedToArray = function () {

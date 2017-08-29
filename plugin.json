@@ -10,8 +10,8 @@
       "url": "http://www.enesa.cz"
     },
     "keywords": ["carpet", "plot", "panel"],
-    "version": "0.0.2",
-    "updated": "2017-07-20",
+    "version": "0.0.3",
+    "updated": "2017-08-29",
     "logos": {
       "small": "src/img/logo.svg",
       "large": "src/img/logo.svg"
@@ -19,7 +19,7 @@
   },
 
   "dependencies": {
-    "grafanaVersion": "4.x.x",
+    "grafanaVersion": "4.3.x",
     "plugins": [ ]
   }
 }

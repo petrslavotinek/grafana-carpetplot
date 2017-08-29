@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/kbn', './data-converter', './aggregates', './fragments', './svg/rendering', './canvas/rendering', './options-editor', './css/carpet-plot.css!'], function (_export, _context) {
+System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/kbn', './data-converter', './aggregates', './fragments', './xAxisLabelFormats', './svg/rendering', './canvas/rendering', './options-editor', './css/carpet-plot.css!'], function (_export, _context) {
   "use strict";
 
-  var MetricsPanelCtrl, _, contextSrv, kbn, createConverter, aggregates, aggregatesMap, fragments, fragmentsMap, svgRendering, canvasRendering, carpetplotOptionsEditor, _createClass, CANVAS, SVG, panelDefaults, renderer, colorSchemes, CarpetPlotCtrl;
+  var MetricsPanelCtrl, _, contextSrv, kbn, createConverter, aggregates, aggregatesMap, fragments, fragmentsMap, labelFormats, svgRendering, canvasRendering, carpetplotOptionsEditor, _createClass, CANVAS, SVG, panelDefaults, renderer, colorSchemes, CarpetPlotCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -52,6 +52,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
     }, function (_fragments) {
       fragments = _fragments.default;
       fragmentsMap = _fragments.fragmentsMap;
+    }, function (_xAxisLabelFormats) {
+      labelFormats = _xAxisLabelFormats.labelFormats;
     }, function (_svgRendering) {
       svgRendering = _svgRendering.default;
     }, function (_canvasRendering) {
@@ -95,7 +97,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           show: true,
           showWeekends: true,
           minBucketWidthToShowWeekends: 4,
-          showCrosshair: true
+          showCrosshair: true,
+          labelFormat: '%a %m/%d'
         },
         yAxis: {
           show: true,
@@ -155,6 +158,7 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           _this.colorSchemes = colorSchemes;
           _this.fragmentOptions = fragmentsMap;
           _this.aggregateOptions = aggregatesMap;
+          _this.xAxisLabelFormats = labelFormats;
           _this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
           _.defaultsDeep(_this.panel, panelDefaults);

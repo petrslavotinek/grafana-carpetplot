@@ -6,6 +6,7 @@ import kbn from 'app/core/utils/kbn';
 import createConverter from './data-converter';
 import aggregates, { aggregatesMap } from './aggregates';
 import fragments, { fragmentsMap } from './fragments';
+import { labelFormats } from './xAxisLabelFormats';
 import svgRendering from './svg/rendering';
 import canvasRendering from './canvas/rendering';
 import { carpetplotOptionsEditor } from './options-editor';
@@ -29,7 +30,8 @@ const panelDefaults = {
     show: true,
     showWeekends: true,
     minBucketWidthToShowWeekends: 4,
-    showCrosshair: true
+    showCrosshair: true,
+    labelFormat: '%a %m/%d'
   },
   yAxis: {
     show: true,
@@ -89,6 +91,7 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
     this.colorSchemes = colorSchemes;
     this.fragmentOptions = fragmentsMap;
     this.aggregateOptions = aggregatesMap;
+    this.xAxisLabelFormats = labelFormats;
     this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
 
     _.defaultsDeep(this.panel, panelDefaults);
