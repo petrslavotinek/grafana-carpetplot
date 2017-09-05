@@ -175,9 +175,9 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           value: function transformData(data) {
             var converter = createConverter(this.panel.aggregate, this.panel.fragment);
 
-            var _timeSrv$timeRange = this.timeSrv.timeRange(),
-                from = _timeSrv$timeRange.from,
-                to = _timeSrv$timeRange.to;
+            var _ref = this.range || this.timeSrv.timeRange(),
+                from = _ref.from,
+                to = _ref.to;
 
             return converter.convertData(from, to, data);
           }

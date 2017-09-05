@@ -120,7 +120,7 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
 
   transformData(data) {
     const converter = createConverter(this.panel.aggregate, this.panel.fragment);
-    const { from, to } = this.timeSrv.timeRange();
+    const { from, to } = this.range || this.timeSrv.timeRange();
     return converter.convertData(from, to, data);
   }
 

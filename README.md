@@ -43,10 +43,12 @@ Tested with InfluxDb data source.
 
 ## Changelog
 
-* 0.0.2
-  * New aggregate functions: Min, Max, First, Last.
+* 0.0.4
+  * Chart now takes into account Override relative time settings in Time range tab.
 * 0.0.3
   * Possibility to invert color scheme.
   * Possibility to change X axis label format.
   * Possibility to hide X axis labels.
   * Possibility to hide Y axis labels.
+* 0.0.2
+  * New aggregate functions: Min, Max, First, Last.
