@@ -1,0 +1,3 @@
+[submodule "build-scripts"]
+	path = build-scripts
+	url = git@github.com:snuk-io/grunt-builder-scripts.git

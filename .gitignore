@@ -1,1 +1,5 @@
 node_modules
+dist
+.sass-cache
+carpetplot*
+package-lock.json
