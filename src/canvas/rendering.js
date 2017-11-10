@@ -402,8 +402,8 @@ export default function link(scope, elem, attrs, ctrl) {
     const { left, top } = $canvas[0].getBoundingClientRect();
     const { pageX, pageY } = event;
     const pos = {
-      x: pageX - window.scrollX - left,
-      y: pageY - window.scrollY - top,
+      x: pageX - window.pageXOffset - left,
+      y: pageY - window.pageYOffset - top,
       pageX,
       pageY
     };
