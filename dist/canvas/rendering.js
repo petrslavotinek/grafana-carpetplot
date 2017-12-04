@@ -1,11 +1,28 @@
 'use strict';
 
-System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'moment', 'jquery', '../fragments', './tooltip', '../formatting', '../xAxisLabelFormats'], function (_export, _context) {
+System.register(['d3', 'lodash', 'moment', 'jquery', '../fragments', './tooltip', '../formatting', '../x-axis-label-formats', '../theme-provider', '../color-modes', '../color-spaces', '../libs/d3-scale-chromatic/index'], function (_export, _context) {
   "use strict";
 
-  var d3, _, appEvents, contextSrv, tickStep, moment, $, getFragment, CarpetplotTooltip, valueFormatter, labelFormats, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN;
+  var d3, _, moment, $, getFragment, CarpetplotTooltip, valueFormatter, labelFormats, themeProvider, colorModes, interpolationMap, d3ScaleChromatic, _slicedToArray, DEFAULT_X_TICK_SIZE_PX, X_AXIS_TICK_MIN_SIZE, Y_AXIS_TICK_PADDING, Y_AXIS_TICK_MIN_SIZE, MIN_SELECTION_WIDTH, LEGEND_HEIGHT, LEGEND_TOP_MARGIN, DO_NOT_ROUND, ROUND_DECIMALS;
+
+  function _defineProperty(obj, key, value) {
+    if (key in obj) {
+      Object.defineProperty(obj, key, {
+        value: value,
+        enumerable: true,
+        configurable: true,
+        writable: true
+      });
+    } else {
+      obj[key] = value;
+    }
+
+    return obj;
+  }
 
   function link(scope, elem, attrs, ctrl) {
+    var _colorScales;
+
     var data = void 0,
         panel = void 0,
         timeRange = void 0,
@@ -40,6 +57,9 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         originalPointColor = void 0,
         pointWidth = void 0,
         pointHeight = void 0,
+        pointWidthRounded = void 0,
+        pointHeightRounded = void 0,
+        highlightContainer = void 0,
         highlightedBucket = void 0,
         $canvas = void 0;
 
@@ -73,6 +93,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       addLegend();
       addCanvas();
       addPoints();
+      addHighlight();
     }
 
     function addCarpetplotSvg() {
@@ -111,6 +132,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function addYAxis() {
+      //debugger
       yScale = d3.scaleTime().domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')]).range([chartHeight, 0]);
 
       var yAxis = d3.axisLeft(yScale).ticks(getYAxisTicks()).tickFormat(function (value) {
@@ -134,7 +156,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     function getYAxisWidth() {
       var axisText = carpet.selectAll('.axis-y text').nodes();
       return d3.max(axisText, function (text) {
-        return $(text).outerWidth();
+        return text.getBBox().width;
       });
     }
 
@@ -201,6 +223,10 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       return d3.timeMonth.every(1);
     }
 
+    function addHighlight() {
+      highlightContainer = carpet.append('g').attr('class', 'points-highlight').attr('transform', 'translate(' + yAxisWidth + ',' + margin.top + ')');
+    }
+
     function addCanvas() {
       if (canvas) {
         canvas.remove();
@@ -219,7 +245,9 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var container = d3.select(customBase);
 
       pointWidth = Math.max(0, chartWidth / days);
+      pointWidthRounded = round(pointWidth);
       pointHeight = Math.max(0, chartHeight / fragment.count);
+      pointHeightRounded = round(pointHeight);
 
       var pointScale = d3.scaleLinear().domain([fragment.count, 0]).range([chartHeight, 0]);
 
@@ -250,29 +278,131 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       var elements = cols.selectAll('custom.carpet-point').each(function (d, i) {
         var node = d3.select(this);
 
-        context.fillStyle = node.attr('fillStyle');
-        context.fillRect(node.attr('x'), node.attr('y'), pointWidth, pointHeight);
+        var color = node.attr('fillStyle');
+        var x = round(node.attr('x'));
+        var y = round(node.attr('y'));
+
+        context.fillStyle = color;
+        context.fillRect(x, y, pointWidthRounded, pointHeightRounded);
       });
     }
 
     function getMinMax() {
-      var _panel$scale = panel.scale,
+      var _panel = panel,
+          _panel$scale = _panel.scale,
           min = _panel$scale.min,
-          max = _panel$scale.max;
+          max = _panel$scale.max,
+          mode = _panel.color.mode;
 
-      return [isSet(min) ? min : data.stats.min, isSet(max) ? max : data.stats.max];
+      var isSpectrumMode = mode === colorModes.SPECTRUM;
+      return [isSpectrumMode && isSet(min) ? min : data.stats.min, isSpectrumMode && isSet(max) ? max : data.stats.max];
     }
 
+    var colorScales = (_colorScales = {}, _defineProperty(_colorScales, colorModes.SPECTRUM, getColorScaleSpectrum), _defineProperty(_colorScales, colorModes.CUSTOM, getColorScaleCustom), _colorScales);
+
     function getColorScale(min, max) {
+      return colorScales[panel.color.mode](min, max);
+    }
+
+    function getColorScaleSpectrum(min, max) {
+      var theme = themeProvider.getTheme();
       var colorScheme = _.find(ctrl.colorSchemes, { value: panel.color.colorScheme });
-      var colorInterpolator = d3[colorScheme.value];
-      var colorScaleInverted = colorScheme.invert === 'always' || colorScheme.invert === 'dark' && !contextSrv.user.lightTheme;
-      colorScaleInverted = panel.color.invert ? !colorScaleInverted : colorScaleInverted;
+      var colorInterpolator = d3ScaleChromatic[colorScheme.value];
+      var invert = colorScheme.invert === 'always' || colorScheme.invert === 'dark' && theme === 'dark';
+      var domain = getStartEnd(min, max, invert);
 
-      var start = colorScaleInverted ? max : min;
-      var end = colorScaleInverted ? min : max;
+      return d3.scaleSequential(colorInterpolator).domain(domain);
+    }
 
-      return d3.scaleSequential(colorInterpolator).domain([start, end]);
+    function getColorScaleCustom(min, max) {
+      var domain = [];
+
+      var colors = panel.color.customColors.map(function (color) {
+        return color.color;
+      });
+      var interpolator = interpolationMap[panel.color.colorSpace];
+
+      var breakpoints = panel.color.customColors.map(function (color) {
+        return color.breakpoint;
+      });
+      var firstBreakpoint = breakpoints.find(function (breakpoint) {
+        return isDefined(breakpoint);
+      });
+      if (isDefined(firstBreakpoint)) {
+        // transform breakpoints
+        var last = 0;
+
+        var fill = function fill(i, value) {
+          var step = (value - domain[last]) / (i - last);
+          d3.range(i - last - 1).forEach(function (d, j) {
+            domain[last + j + 1] = domain[last] + (j + 1) * step;
+            // setDomainValue(last + j + 1, domain[last] + (j + 1) * step);
+          });
+        };
+
+        for (var i = 0; i < breakpoints.length; i++) {
+          if (!isDefined(breakpoints[i])) {
+            // !set
+            if (i === 0) {
+              // color first
+              domain[i] = Math.min(min, firstBreakpoint < min ? -Number.MAX_VALUE : firstBreakpoint);
+              // setDomainValue(i, Math.min(min, firstBreakpoint));
+            } else if (i === breakpoints.length - 1) {
+              // color last
+              var maxVal = Math.max(max, domain[last]);
+              fill(i, maxVal);
+              domain[i] = maxVal;
+              // setDomainValue(i, maxVal);
+            }
+          } else if (i === 0) {
+            // set && color first
+            domain[i] = breakpoints[i];
+            // setDomainValue(i, breakpoints[i]);
+          } else {
+            // set && color 2..N
+            if (breakpoints[i] >= domain[last]) {
+              // valid breakpoint
+              fill(i, breakpoints[i]);
+              domain[i] = breakpoints[i];
+              // setDomainValue(i, breakpoints[i]);
+              last = i;
+            }
+          }
+        }
+      } else {
+        var _getStartEnd = getStartEnd(min, max),
+            _getStartEnd2 = _slicedToArray(_getStartEnd, 2),
+            start = _getStartEnd2[0],
+            end = _getStartEnd2[1];
+
+        var step = (end - start) / (colors.length - 1);
+        domain = d3.range(colors.length).map(function (d, i) {
+          return start + i * step;
+        });
+      }
+
+      if (domain[0] > min) {
+        domain.unshift(min);
+        colors.unshift(colors[0]);
+      }
+
+      if (domain[domain.length - 1] < max) {
+        domain.push(max);
+        colors.push(colors[colors.length - 1]);
+      }
+
+      return d3.scaleLinear().domain(domain).range(colors).interpolate(interpolator);
+    }
+
+    function isDefined(value) {
+      return value !== undefined && value !== null;
+    }
+
+    function getStartEnd(min, max) {
+      var invert = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+      invert = panel.color.invert ? !invert : invert;
+      return [invert ? max : min, invert ? min : max];
     }
 
     function isSet(prop) {
@@ -316,7 +446,6 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function onMouseLeave() {
-      // appEvents.emit('graph-hover-clear');
       clearCrosshair();
     }
 
@@ -357,16 +486,15 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       highlightedBucket = bucket;
 
       var value = bucket.value,
-          x = bucket.x,
-          y = bucket.y;
+          x = bucket.xRounded,
+          y = bucket.yRounded;
 
 
       var color = colorScale(value);
       var highlightColor = d3.color(color).darker(1);
       originalPointColor = color;
 
-      context.fillStyle = highlightColor;
-      context.fillRect(x, y, pointWidth, pointHeight);
+      highlightContainer.append('rect').attr('x', x).attr('y', y).attr('width', pointWidthRounded).attr('height', pointHeightRounded).attr('fill', highlightColor);
     }
 
     function resetPointHighLight() {
@@ -374,12 +502,7 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
         return;
       }
 
-      var _highlightedBucket = highlightedBucket,
-          x = _highlightedBucket.x,
-          y = _highlightedBucket.y;
-
-      context.fillStyle = originalPointColor;
-      context.fillRect(x, y, pointWidth, pointHeight);
+      highlightContainer.select('rect').remove();
 
       highlightedBucket = null;
     }
@@ -393,8 +516,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
           pageY = event.pageY;
 
       var pos = {
-        x: pageX - window.scrollX - left,
-        y: pageY - window.scrollY - top,
+        x: pageX - window.pageXOffset - left,
+        y: pageY - window.pageYOffset - top,
         pageX: pageX,
         pageY: pageY
       };
@@ -457,6 +580,9 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     }
 
     function drawColorLegend() {
+      if (!colorScale) {
+        return;
+      }
       d3.select("#heatmap-color-legend").selectAll("rect").remove();
 
       var legend = d3.select("#heatmap-color-legend");
@@ -485,11 +611,11 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       var minLabel = createMinMaxLabel(legendContainer, formatter(min));
       var maxLabel = createMinMaxLabel(legendContainer, formatter(max));
-      var $minLabel = $(minLabel.node());
-      var $maxLabel = $(maxLabel.node());
+      var minLabelBox = minLabel.node().getBBox();
+      var maxLabelBox = maxLabel.node().getBBox();
 
-      var labelHeight = Math.ceil(Math.max($minLabel.height(), $maxLabel.height()));
-      var labelWidth = Math.ceil(Math.max($minLabel.width(), $maxLabel.width()));
+      var labelHeight = Math.ceil(Math.max(minLabelBox.height, maxLabelBox.height));
+      var labelWidth = Math.ceil(Math.max(minLabelBox.width, maxLabelBox.width));
       var legendMargin = labelWidth + 2 * labelMargin;
       var labelY = (legendHeight - labelHeight + 8) / 2;
 
@@ -515,14 +641,16 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
     function drawLegend(legend, legendWidth, legendHeight) {
       var rangeStep = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 2;
 
-      var legendColorScale = getColorScale(0, legendWidth);
-      var valuesRange = d3.range(0, legendWidth, rangeStep);
+      var legendColorScale = getColorScale(0, legendWidth, min, max);
+      var positionRange = d3.range(0, legendWidth, rangeStep);
 
-      return legend.selectAll(".heatmap-color-legend-rect").data(valuesRange).enter().append("rect").attr("x", function (d) {
+      var valueScale = d3.scaleLinear().domain([0, legendWidth]).range([min, max]);
+
+      return legend.selectAll(".heatmap-color-legend-rect").data(positionRange).enter().append("rect").attr("x", function (d) {
         return d;
       }).attr("y", 0).attr("width", rangeStep + 1) // Overlap rectangles to prevent gaps
       .attr("height", legendHeight).attr("stroke-width", 0).attr("fill", function (d) {
-        return legendColorScale(d);
+        return colorScale(valueScale(d));
       });
     }
 
@@ -553,6 +681,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       return _.has(data, 'data[' + dayIndex + '].buckets[' + bucketIndex + ']') ? {
         x: bucketX,
         y: bucketY,
+        xRounded: round(bucketX),
+        yRounded: round(bucketY),
         time: fragment.getTime(data.data[dayIndex].time, bucketIndex),
         value: data.data[dayIndex].buckets[bucketIndex],
         hasValue: function hasValue() {
@@ -568,6 +698,19 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       return data && data.data;
     }
 
+    function round(value) {
+      var decimals = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : ROUND_DECIMALS;
+
+      if (decimals === DO_NOT_ROUND) {
+        return value;
+      }
+      if (!decimals) {
+        return Math.round(value);
+      }
+      var mul = Math.pow(10, decimals);
+      return Math.round(value * mul) / mul;
+    }
+
     // Render
 
     function render() {
@@ -577,11 +720,11 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
 
       fragment = getFragment(panel.fragment);
 
+      addCarpetplot();
+
       if (!d3.select("#heatmap-color-legend").empty()) {
         drawColorLegend();
       }
-
-      addCarpetplot();
 
       scope.hasData = hasData;
       scope.isInChart = isInChart;
@@ -599,11 +742,6 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       d3 = _d2.default;
     }, function (_lodash) {
       _ = _lodash.default;
-    }, function (_appCoreCore) {
-      appEvents = _appCoreCore.appEvents;
-      contextSrv = _appCoreCore.contextSrv;
-    }, function (_appCoreUtilsTicks) {
-      tickStep = _appCoreUtilsTicks.tickStep;
     }, function (_moment) {
       moment = _moment.default;
     }, function (_jquery) {
@@ -616,6 +754,14 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       valueFormatter = _formatting.valueFormatter;
     }, function (_xAxisLabelFormats) {
       labelFormats = _xAxisLabelFormats.labelFormats;
+    }, function (_themeProvider) {
+      themeProvider = _themeProvider.default;
+    }, function (_colorModes) {
+      colorModes = _colorModes.default;
+    }, function (_colorSpaces) {
+      interpolationMap = _colorSpaces.interpolationMap;
+    }, function (_libsD3ScaleChromaticIndex) {
+      d3ScaleChromatic = _libsD3ScaleChromaticIndex;
     }],
     execute: function () {
       _slicedToArray = function () {
@@ -663,6 +809,8 @@ System.register(['d3', 'lodash', 'app/core/core', 'app/core/utils/ticks', 'momen
       MIN_SELECTION_WIDTH = 2;
       LEGEND_HEIGHT = 40;
       LEGEND_TOP_MARGIN = 10;
+      DO_NOT_ROUND = 'DO_NOT_DOUND';
+      ROUND_DECIMALS = DO_NOT_ROUND;
     }
   };
 });

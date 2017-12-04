@@ -16,17 +16,29 @@ Tested with InfluxDb data source.
 
 ## Available options
 
+### Display tab
 * Colors
-  * Scheme: Color scheme to represent data values.
+  * Mode: Mode of color scheme. Possibility to choose from Spectrum and Custom.
+  * Spectrum Mode:
+    * Scheme: Color scheme to represent data values.
+    * Min: Minimum value corresponding to the leftmost color of the sceheme. If not set, is calculated as a minimum value in current visible data set.
+    * Max: Maximum value corresponding to the rightmost color of the sceheme. If not set, is calculated as a maximum value in current visible data set.    
+    * Invert: inverts selected color schemes.
+  * Custom Mode:
+    * Space: Color space used to calculate transition between colors. (RGB, HSL, HCL, Lab, Cubehelix)
+    * Color 1..N: Custom color. User can add and remove it, reorder them and select breakpoint value for each color. Breakpoint values are optional. Values between breakpoints are linearly interpolated.
   * Null Color: Color to represent buckets with null value.
-  * Invert: inverts selected color schemes.
-  * Min: Minimum value corresponding to the leftmost color of the sceheme. If not set, is calculated as a minimum value in current visible data set.
-  * Max: Maximum value corresponding to the rightmost color of the sceheme. If not set, is calculated as a maximum value in current visible data set.
 * Data
   * Aggregate: Function used to aggregate values in a single bucket. (Average / Sum / Count / Min / Max / First / Last)
   * Fragment: Fragment of a day. (Hour, 15 minutes, Minute)
   * Decimals: Number of decimals displayed in tooltip and legend.
   * Unit: Unit format used in tooltip and legend.
+* Tooltip:
+  * Show: If selected, displays tooltip on hover.
+* Legend:
+  * Show: If selected, displays legend under graph.
+
+### Axes tab
 * X Axis:
   * Show weekends: If selected, displays lines marking beggining and end of weekends.
   * Min bucket width: Minimum required width of a bucket in px to enable displaying of weekend lines.
@@ -36,10 +48,6 @@ Tested with InfluxDb data source.
 * Y Axis:
   * Show crosshair: If selected, displays crosshair in y axis on hover. WD = abbreviated weekday. M = month. D = day. Y = year.
   * Hide labels: Hides Y axis labels.
-* Tooltip:
-  * Show: If selected, displays tooltip on hover.
-* Legend:
-  * Show: If selected, displays legend under graph.
 
 ## Changelog
 
@@ -52,3 +60,6 @@ Tested with InfluxDb data source.
   * Possibility to hide Y axis labels.
 * 0.0.2
   * New aggregate functions: Min, Max, First, Last.
+* 0.1.0
+  * Possibility of custom colors.
+  * Fixed compatibility with IE 11.

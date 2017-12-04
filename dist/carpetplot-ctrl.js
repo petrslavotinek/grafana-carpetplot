@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/kbn', './data-converter', './aggregates', './fragments', './xAxisLabelFormats', './svg/rendering', './canvas/rendering', './options-editor', './css/carpet-plot.css!'], function (_export, _context) {
+System.register(['app/plugins/sdk', 'lodash', 'app/core/utils/kbn', './data-converter', './aggregates', './fragments', './color-modes', './color-spaces', './x-axis-label-formats', './canvas/rendering', './display-editor', './axes-editor', './theme-provider', './css/carpet-plot.css!'], function (_export, _context) {
   "use strict";
 
-  var MetricsPanelCtrl, _, contextSrv, kbn, createConverter, aggregates, aggregatesMap, fragments, fragmentsMap, labelFormats, svgRendering, canvasRendering, carpetplotOptionsEditor, _createClass, CANVAS, SVG, panelDefaults, renderer, colorSchemes, CarpetPlotCtrl;
+  var MetricsPanelCtrl, _, kbn, createConverter, aggregates, aggregatesMap, fragments, fragmentsMap, colorModes, colorModesMap, colorSpaces, colorSpacesMap, labelFormats, canvasRendering, carpetplotDisplayEditor, carpetplotAxesEditor, themeProvider, _createClass, panelDefaults, colorSchemes, CarpetPlotCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -40,8 +40,6 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
       MetricsPanelCtrl = _appPluginsSdk.MetricsPanelCtrl;
     }, function (_lodash) {
       _ = _lodash.default;
-    }, function (_appCoreCore) {
-      contextSrv = _appCoreCore.contextSrv;
     }, function (_appCoreUtilsKbn) {
       kbn = _appCoreUtilsKbn.default;
     }, function (_dataConverter) {
@@ -52,14 +50,22 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
     }, function (_fragments) {
       fragments = _fragments.default;
       fragmentsMap = _fragments.fragmentsMap;
+    }, function (_colorModes) {
+      colorModes = _colorModes.default;
+      colorModesMap = _colorModes.colorModesMap;
+    }, function (_colorSpaces) {
+      colorSpaces = _colorSpaces.default;
+      colorSpacesMap = _colorSpaces.colorSpacesMap;
     }, function (_xAxisLabelFormats) {
       labelFormats = _xAxisLabelFormats.labelFormats;
-    }, function (_svgRendering) {
-      svgRendering = _svgRendering.default;
     }, function (_canvasRendering) {
       canvasRendering = _canvasRendering.default;
-    }, function (_optionsEditor) {
-      carpetplotOptionsEditor = _optionsEditor.carpetplotOptionsEditor;
+    }, function (_displayEditor) {
+      carpetplotDisplayEditor = _displayEditor.carpetplotDisplayEditor;
+    }, function (_axesEditor) {
+      carpetplotAxesEditor = _axesEditor.carpetplotAxesEditor;
+    }, function (_themeProvider) {
+      themeProvider = _themeProvider.default;
     }, function (_cssCarpetPlotCss) {}],
     execute: function () {
       _createClass = function () {
@@ -80,14 +86,19 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
         };
       }();
 
-      CANVAS = 'CANVAS';
-      SVG = 'SVG';
       panelDefaults = {
         aggregate: aggregates.AVG,
         fragment: fragments.HOUR,
         color: {
+          mode: colorModes.SPECTRUM,
           colorScheme: 'interpolateRdYlGn',
-          nullColor: 'transparent'
+          nullColor: 'transparent',
+          customColors: [{
+            color: '#006837'
+          }, {
+            color: '#aa0526'
+          }],
+          colorSpace: colorSpaces.RGB
         },
         scale: {
           min: null,
@@ -115,7 +126,6 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           decimals: null
         }
       };
-      renderer = CANVAS;
       colorSchemes = [
       // Diverging
       { name: 'Spectral', value: 'interpolateSpectral', invert: 'always' }, { name: 'RdYlGn', value: 'interpolateRdYlGn', invert: 'always' },
@@ -141,7 +151,8 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
           };
 
           _this.onInitEditMode = function () {
-            _this.addEditorTab('Options', carpetplotOptionsEditor, 2);
+            _this.addEditorTab('Display', carpetplotDisplayEditor, 2);
+            _this.addEditorTab('Axes', carpetplotAxesEditor, 3);
             _this.unitFormats = kbn.getUnitFormats();
           };
 
@@ -152,14 +163,28 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
             _this.data = _this.transformData(_this.dataList);
           };
 
+          _this.onNullColorChange = function (newColor) {
+            _this.panel.color.nullColor = newColor;
+            _this.render();
+          };
+
+          _this.onCustomColorChange = function (customColor) {
+            return function (newColor) {
+              customColor.color = newColor;
+              _this.render();
+            };
+          };
+
           _this.dataList = null;
           _this.data = {};
           _this.timeSrv = timeSrv;
           _this.colorSchemes = colorSchemes;
           _this.fragmentOptions = fragmentsMap;
           _this.aggregateOptions = aggregatesMap;
+          _this.colorModeOptions = colorModesMap;
+          _this.colorSpaceOptions = colorSpacesMap;
           _this.xAxisLabelFormats = labelFormats;
-          _this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
+          _this.theme = themeProvider.getTheme();
 
           _.defaultsDeep(_this.panel, panelDefaults);
 
@@ -184,18 +209,43 @@ System.register(['app/plugins/sdk', 'lodash', 'app/core/core', 'app/core/utils/k
         }, {
           key: 'link',
           value: function link(scope, elem, attrs, ctrl) {
-            switch (renderer) {
-              case CANVAS:
-                {
-                  canvasRendering(scope, elem, attrs, ctrl);
-                  break;
-                }
-              case SVG:
-                {
-                  svgRendering(scope, elem, attrs, ctrl);
-                  break;
-                }
+            canvasRendering(scope, elem, attrs, ctrl);
+          }
+        }, {
+          key: 'addCustomColor',
+          value: function addCustomColor() {
+            this.panel.color.customColors.push({ color: '#ffffff' });
+            this.render();
+          }
+        }, {
+          key: 'removeCustomColor',
+          value: function removeCustomColor(i) {
+            if (this.panel.color.customColors.length > 2) {
+              this.panel.color.customColors.splice(i, 1);
+              this.render();
             }
+          }
+        }, {
+          key: 'moveCustomColorUp',
+          value: function moveCustomColorUp(i) {
+            var j = i === 0 ? this.panel.color.customColors.length - 1 : i - 1;
+            this.swapCustomColors(i, j);
+            this.render();
+          }
+        }, {
+          key: 'moveCustomColorDown',
+          value: function moveCustomColorDown(i) {
+            var j = i === this.panel.color.customColors.length - 1 ? 0 : i + 1;
+            this.swapCustomColors(i, j);
+            this.render();
+          }
+        }, {
+          key: 'swapCustomColors',
+          value: function swapCustomColors(i, j) {
+            var colors = this.panel.color.customColors;
+            var temp = colors[j];
+            colors[j] = colors[i];
+            colors[i] = temp;
           }
         }]);
 

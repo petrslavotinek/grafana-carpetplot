@@ -1,14 +1,16 @@
 import d3 from 'd3';
 import _ from 'lodash';
-import { appEvents, contextSrv } from 'app/core/core';
-import { tickStep } from 'app/core/utils/ticks';
 import moment from 'moment';
 import $ from 'jquery';
 
 import { getFragment } from '../fragments';
 import CarpetplotTooltip from './tooltip';
 import { valueFormatter } from '../formatting';
-import { labelFormats } from '../xAxisLabelFormats';
+import { labelFormats } from '../x-axis-label-formats';
+import themeProvider from '../theme-provider';
+import colorModes from '../color-modes';
+import { interpolationMap } from '../color-spaces';
+import * as d3ScaleChromatic from '../libs/d3-scale-chromatic/index';
 
 const
   DEFAULT_X_TICK_SIZE_PX = 100,
@@ -17,7 +19,9 @@ const
   Y_AXIS_TICK_MIN_SIZE = 20,
   MIN_SELECTION_WIDTH = 2,
   LEGEND_HEIGHT = 40,
-  LEGEND_TOP_MARGIN = 10;
+  LEGEND_TOP_MARGIN = 10,
+  DO_NOT_ROUND = 'DO_NOT_DOUND',
+  ROUND_DECIMALS = DO_NOT_ROUND;
 
 export default function link(scope, elem, attrs, ctrl) {
   let data, panel, timeRange, carpet, canvas, context;
@@ -39,7 +43,8 @@ export default function link(scope, elem, attrs, ctrl) {
     mouseUpHandler,
     originalPointColor,
     pointWidth, pointHeight,
-    highlightedBucket,
+    pointWidthRounded, pointHeightRounded,
+    highlightContainer, highlightedBucket,
     $canvas;
 
   const selection = {
@@ -64,6 +69,7 @@ export default function link(scope, elem, attrs, ctrl) {
     addLegend();
     addCanvas();
     addPoints();
+    addHighlight();
   }
 
   function addCarpetplotSvg() {
@@ -105,6 +111,7 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function addYAxis() {
+    //debugger
     yScale = d3.scaleTime()
       .domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')])
       .range([chartHeight, 0]);
@@ -134,7 +141,7 @@ export default function link(scope, elem, attrs, ctrl) {
 
   function getYAxisWidth() {
     const axisText = carpet.selectAll('.axis-y text').nodes();
-    return d3.max(axisText, (text) => $(text).outerWidth());
+    return d3.max(axisText, (text) => text.getBBox().width);
   }
 
   function getYAxisTicks() {
@@ -217,6 +224,12 @@ export default function link(scope, elem, attrs, ctrl) {
     return d3.timeMonth.every(1);
   }
 
+  function addHighlight() {
+    highlightContainer = carpet.append('g')
+      .attr('class', 'points-highlight')
+      .attr('transform', `translate(${yAxisWidth},${margin.top})`);
+  }
+
   function addCanvas() {
     if (canvas) {
       canvas.remove();
@@ -240,7 +253,9 @@ export default function link(scope, elem, attrs, ctrl) {
     const container = d3.select(customBase);
 
     pointWidth = Math.max(0, chartWidth / days);
+    pointWidthRounded = round(pointWidth);
     pointHeight = Math.max(0, chartHeight / fragment.count);
+    pointHeightRounded = round(pointHeight);
 
     const pointScale = d3.scaleLinear()
       .domain([fragment.count, 0])
@@ -276,31 +291,124 @@ export default function link(scope, elem, attrs, ctrl) {
       .each(function (d, i) {
         const node = d3.select(this);
 
-        context.fillStyle = node.attr('fillStyle');
-        context.fillRect(node.attr('x'), node.attr('y'), pointWidth, pointHeight);
+        const color = node.attr('fillStyle');
+        const x = round(node.attr('x'));
+        const y = round(node.attr('y'));
+
+        context.fillStyle = color;
+        context.fillRect(x, y, pointWidthRounded, pointHeightRounded);
       });
   }
 
   function getMinMax() {
-    const { min, max } = panel.scale;
+    const { scale: { min, max }, color: { mode } } = panel;
+    const isSpectrumMode = mode === colorModes.SPECTRUM;
     return [
-      isSet(min) ? min : data.stats.min,
-      isSet(max) ? max : data.stats.max
+      isSpectrumMode && isSet(min) ? min : data.stats.min,
+      isSpectrumMode && isSet(max) ? max : data.stats.max
     ];
   }
 
-  function getColorScale(min, max) {
-    const colorScheme = _.find(ctrl.colorSchemes, { value: panel.color.colorScheme });
-    const colorInterpolator = d3[colorScheme.value];
-    let colorScaleInverted = colorScheme.invert === 'always' || (colorScheme.invert === 'dark' && !contextSrv.user.lightTheme);
-    colorScaleInverted = panel.color.invert ? !colorScaleInverted : colorScaleInverted;
+  const colorScales = {
+    [colorModes.SPECTRUM]: getColorScaleSpectrum,
+    [colorModes.CUSTOM]: getColorScaleCustom
+  };
 
-    const start = colorScaleInverted ? max : min;
-    const end = colorScaleInverted ? min : max;
+  function getColorScale(min, max) {
+    return colorScales[panel.color.mode](min, max);
+  }
+
+  function getColorScaleSpectrum(min, max) {
+    const theme = themeProvider.getTheme();
+    const colorScheme = _.find(ctrl.colorSchemes, { value: panel.color.colorScheme });
+    const colorInterpolator = d3ScaleChromatic[colorScheme.value];
+    const invert = colorScheme.invert === 'always' || (colorScheme.invert === 'dark' && theme === 'dark');
+    const domain = getStartEnd(min, max, invert);
 
     return d3
       .scaleSequential(colorInterpolator)
-      .domain([start, end]);
+      .domain(domain);
+  }
+
+  function getColorScaleCustom(min, max) {
+    let domain = [];
+
+    const colors = panel.color.customColors.map(color => color.color);
+    const interpolator = interpolationMap[panel.color.colorSpace];
+
+    const breakpoints = panel.color.customColors.map(color => color.breakpoint);
+    const firstBreakpoint = breakpoints.find(breakpoint => isDefined(breakpoint));
+    if (isDefined(firstBreakpoint)) {
+      // transform breakpoints
+      let last = 0;
+
+      const fill = (i, value) => {
+        const step = (value - domain[last]) / (i - last);
+        d3.range(i - last - 1).forEach((d, j) => {
+          domain[last + j + 1] = domain[last] + (j + 1) * step;
+          // setDomainValue(last + j + 1, domain[last] + (j + 1) * step);
+        });
+      };
+
+      for (let i = 0; i < breakpoints.length; i++) {
+        if (!isDefined(breakpoints[i])) {
+          // !set
+          if (i === 0) {
+            // color first
+            domain[i] = Math.min(min, firstBreakpoint < min ? -Number.MAX_VALUE : firstBreakpoint);
+            // setDomainValue(i, Math.min(min, firstBreakpoint));
+          } else if (i === breakpoints.length - 1) {
+            // color last
+            const maxVal = Math.max(max, domain[last]);
+            fill(i, maxVal);
+            domain[i] = maxVal;
+            // setDomainValue(i, maxVal);
+          }
+        } else if (i === 0) {
+          // set && color first
+          domain[i] = breakpoints[i];
+          // setDomainValue(i, breakpoints[i]);
+        } else {
+          // set && color 2..N
+          if (breakpoints[i] >= domain[last]) {
+            // valid breakpoint
+            fill(i, breakpoints[i]);
+            domain[i] = breakpoints[i];
+            // setDomainValue(i, breakpoints[i]);
+            last = i;
+          }
+        }
+      }
+    } else {
+      const [start, end] = getStartEnd(min, max);
+      const step = (end - start) / (colors.length - 1);
+      domain = d3.range(colors.length).map((d, i) => start + i * step);
+    }
+
+    if (domain[0] > min) {
+      domain.unshift(min);
+      colors.unshift(colors[0]);
+    }
+
+    if (domain[domain.length - 1] < max) {
+      domain.push(max);
+      colors.push(colors[colors.length - 1]);
+    }
+
+    return d3
+      .scaleLinear()
+      .domain(domain)
+      .range(colors)
+      .interpolate(interpolator);
+  }
+
+  function isDefined(value) {
+    return value !== undefined && value !== null;
+  }
+
+  function getStartEnd(min, max, invert = false) {
+    invert = panel.color.invert ? !invert : invert;
+    return [invert ? max : min, invert ? min : max];
   }
 
   function isSet(prop) {
@@ -340,7 +448,6 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function onMouseLeave() {
-    // appEvents.emit('graph-hover-clear');
     clearCrosshair();
   }
 
@@ -378,22 +485,25 @@ export default function link(scope, elem, attrs, ctrl) {
 
     highlightedBucket = bucket;
 
-    const { value, x, y } = bucket;
+    const { value, xRounded: x, yRounded: y } = bucket;
 
     const color = colorScale(value);
     const highlightColor = d3.color(color).darker(1);
     originalPointColor = color;
 
-    context.fillStyle = highlightColor;
-    context.fillRect(x, y, pointWidth, pointHeight);
+    highlightContainer
+      .append('rect')
+      .attr('x', x)
+      .attr('y', y)
+      .attr('width', pointWidthRounded)
+      .attr('height', pointHeightRounded)
+      .attr('fill', highlightColor);
   }
 
   function resetPointHighLight() {
     if (!highlightedBucket) { return; }
 
-    const { x, y } = highlightedBucket;
-    context.fillStyle = originalPointColor;
-    context.fillRect(x, y, pointWidth, pointHeight);
+    highlightContainer.select('rect').remove();
 
     highlightedBucket = null;
   }
@@ -402,8 +512,8 @@ export default function link(scope, elem, attrs, ctrl) {
     const { left, top } = $canvas[0].getBoundingClientRect();
     const { pageX, pageY } = event;
     const pos = {
-      x: pageX - window.scrollX - left,
-      y: pageY - window.scrollY - top,
+      x: pageX - window.pageXOffset - left,
+      y: pageY - window.pageYOffset - top,
       pageX,
       pageY
     };
@@ -476,6 +586,7 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function drawColorLegend() {
+    if (!colorScale) { return; }
     d3.select("#heatmap-color-legend").selectAll("rect").remove();
 
     const legend = d3.select("#heatmap-color-legend");
@@ -504,11 +615,11 @@ export default function link(scope, elem, attrs, ctrl) {
 
     const minLabel = createMinMaxLabel(legendContainer, formatter(min));
     const maxLabel = createMinMaxLabel(legendContainer, formatter(max));
-    const $minLabel = $(minLabel.node());
-    const $maxLabel = $(maxLabel.node());
+    const minLabelBox = minLabel.node().getBBox();
+    const maxLabelBox = maxLabel.node().getBBox();
 
-    const labelHeight = Math.ceil(Math.max($minLabel.height(), $maxLabel.height()));
-    const labelWidth = Math.ceil(Math.max($minLabel.width(), $maxLabel.width()));
+    const labelHeight = Math.ceil(Math.max(minLabelBox.height, maxLabelBox.height));
+    const labelWidth = Math.ceil(Math.max(minLabelBox.width, maxLabelBox.width));
     const legendMargin = labelWidth + 2 * labelMargin;
     const labelY = (legendHeight - labelHeight + 8) / 2;
 
@@ -552,11 +663,15 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function drawLegend(legend, legendWidth, legendHeight, rangeStep = 2) {
-    const legendColorScale = getColorScale(0, legendWidth);
-    const valuesRange = d3.range(0, legendWidth, rangeStep);
+    const legendColorScale = getColorScale(0, legendWidth, min, max);
+    const positionRange = d3.range(0, legendWidth, rangeStep);
+
+    const valueScale = d3.scaleLinear()
+      .domain([0, legendWidth])
+      .range([min, max]);
 
     return legend.selectAll(".heatmap-color-legend-rect")
-      .data(valuesRange)
+      .data(positionRange)
       .enter()
       .append("rect")
       .attr("x", d => d)
@@ -564,7 +679,7 @@ export default function link(scope, elem, attrs, ctrl) {
       .attr("width", rangeStep + 1) // Overlap rectangles to prevent gaps
       .attr("height", legendHeight)
       .attr("stroke-width", 0)
-      .attr("fill", d => legendColorScale(d));
+      .attr("fill", d => colorScale(valueScale(d)));
   }
 
   // Helpers
@@ -594,6 +709,8 @@ export default function link(scope, elem, attrs, ctrl) {
       ? {
         x: bucketX,
         y: bucketY,
+        xRounded: round(bucketX),
+        yRounded: round(bucketY),
         time: fragment.getTime(data.data[dayIndex].time, bucketIndex),
         value: data.data[dayIndex].buckets[bucketIndex],
         hasValue() {
@@ -610,6 +727,13 @@ export default function link(scope, elem, attrs, ctrl) {
     return data && data.data;
   }
 
+  function round(value, decimals = ROUND_DECIMALS) {
+    if (decimals === DO_NOT_ROUND) { return value; }
+    if (!decimals) { return Math.round(value); }
+    const mul = Math.pow(10, decimals);
+    return Math.round(value * mul) / mul;
+  }
+
   // Render
 
   function render() {
@@ -619,11 +743,11 @@ export default function link(scope, elem, attrs, ctrl) {
 
     fragment = getFragment(panel.fragment);
 
+    addCarpetplot();
+
     if (!d3.select("#heatmap-color-legend").empty()) {
       drawColorLegend();
     }
-
-    addCarpetplot();
 
     scope.hasData = hasData;
     scope.isInChart = isInChart;

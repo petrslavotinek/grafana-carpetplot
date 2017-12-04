@@ -1,26 +1,32 @@
 import { MetricsPanelCtrl } from 'app/plugins/sdk';
 import _ from 'lodash';
-import { contextSrv } from 'app/core/core';
 import kbn from 'app/core/utils/kbn';
 
 import createConverter from './data-converter';
 import aggregates, { aggregatesMap } from './aggregates';
 import fragments, { fragmentsMap } from './fragments';
-import { labelFormats } from './xAxisLabelFormats';
-import svgRendering from './svg/rendering';
+import colorModes, { colorModesMap } from './color-modes';
+import colorSpaces, { colorSpacesMap } from './color-spaces';
+import { labelFormats } from './x-axis-label-formats';
 import canvasRendering from './canvas/rendering';
-import { carpetplotOptionsEditor } from './options-editor';
+import { carpetplotDisplayEditor } from './display-editor';
+import { carpetplotAxesEditor } from './axes-editor';
+import themeProvider from './theme-provider';
 import './css/carpet-plot.css!';
-
-const CANVAS = 'CANVAS';
-const SVG = 'SVG';
 
 const panelDefaults = {
   aggregate: aggregates.AVG,
   fragment: fragments.HOUR,
   color: {
+    mode: colorModes.SPECTRUM,
     colorScheme: 'interpolateRdYlGn',
-    nullColor: 'transparent'
+    nullColor: 'transparent',
+    customColors: [{
+      color: '#006837'
+    }, {
+      color: '#aa0526'
+    }],
+    colorSpace: colorSpaces.RGB
   },
   scale: {
     min: null,
@@ -48,8 +54,6 @@ const panelDefaults = {
     decimals: null
   }
 };
-
-const renderer = CANVAS;
 
 const colorSchemes = [
   // Diverging
@@ -91,8 +95,10 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
     this.colorSchemes = colorSchemes;
     this.fragmentOptions = fragmentsMap;
     this.aggregateOptions = aggregatesMap;
+    this.colorModeOptions = colorModesMap;
+    this.colorSpaceOptions = colorSpacesMap;
     this.xAxisLabelFormats = labelFormats;
-    this.theme = contextSrv.user.lightTheme ? 'light' : 'dark';
+    this.theme = themeProvider.getTheme();
 
     _.defaultsDeep(this.panel, panelDefaults);
 
@@ -109,7 +115,8 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
   }
 
   onInitEditMode = () => {
-    this.addEditorTab('Options', carpetplotOptionsEditor, 2);
+    this.addEditorTab('Display', carpetplotDisplayEditor, 2);
+    this.addEditorTab('Axes', carpetplotAxesEditor, 3);
     this.unitFormats = kbn.getUnitFormats();
   }
 
@@ -125,15 +132,51 @@ export class CarpetPlotCtrl extends MetricsPanelCtrl {
   }
 
   link(scope, elem, attrs, ctrl) {
-    switch (renderer) {
-      case CANVAS: {
-        canvasRendering(scope, elem, attrs, ctrl);
-        break;
-      }
-      case SVG: {
-        svgRendering(scope, elem, attrs, ctrl);
-        break;
-      }
+    canvasRendering(scope, elem, attrs, ctrl);
+  }
+
+  addCustomColor() {
+    this.panel.color.customColors.push({ color: '#ffffff' });
+    this.render();
+  }
+
+  removeCustomColor(i) {
+    if (this.panel.color.customColors.length > 2) {
+      this.panel.color.customColors.splice(i, 1);
+      this.render();
     }
+  }
+
+  moveCustomColorUp(i) {
+    const j = i === 0
+      ? this.panel.color.customColors.length - 1
+      : i - 1;
+    this.swapCustomColors(i, j);
+    this.render();
+  }
+
+  moveCustomColorDown(i) {
+    const j = i === this.panel.color.customColors.length - 1
+      ? 0
+      : i + 1;
+    this.swapCustomColors(i, j);
+    this.render();
+  }
+
+  swapCustomColors(i, j) {
+    const colors = this.panel.color.customColors;
+    const temp = colors[j];
+    colors[j] = colors[i];
+    colors[i] = temp;
+  }
+
+  onNullColorChange = (newColor) => {
+    this.panel.color.nullColor = newColor;
+    this.render();
+  }
+
+  onCustomColorChange = (customColor) => (newColor) => {
+    customColor.color = newColor;
+    this.render();
   }
 }

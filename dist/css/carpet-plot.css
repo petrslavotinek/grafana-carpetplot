@@ -28,4 +28,13 @@
 .carpetplot-wrapper.dark .carpetplot-panel .tick line {
   stroke: #1F1D1D; }
 
+.carpetplot-editor .cp-btn {
+  cursor: pointer; }
+  .carpetplot-editor .cp-btn:not(.cp-btn-disabled):hover {
+    color: #eb7b18; }
+  .carpetplot-editor .cp-btn.cp-btn-disabled {
+    cursor: default; }
+    .carpetplot-editor .cp-btn.cp-btn-disabled i {
+      opacity: .3; }
+
 /*# sourceMappingURL=carpet-plot.css.map */

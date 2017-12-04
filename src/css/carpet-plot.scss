@@ -57,3 +57,20 @@
     }
   }
 }
+
+.carpetplot-editor {
+  .cp-btn {
+    cursor: pointer;
+
+    &:not(.cp-btn-disabled):hover {
+      color: #eb7b18;
+    }
+
+    &.cp-btn-disabled {
+      cursor: default;
+      i {
+        opacity: .3;
+      }
+    }
+  }
+}
