@@ -1,5 +1,5 @@
-import {interpolateRgbBasis} from "d3";
+import d3 from 'd3';
 
 export default function(scheme) {
-  return interpolateRgbBasis(scheme[scheme.length - 1]);
+  return d3.interpolateRgbBasis(scheme[scheme.length - 1]);
 }

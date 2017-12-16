@@ -1,17 +1,17 @@
-"use strict";
+'use strict';
 
-System.register(["d3"], function (_export, _context) {
+System.register(['d3'], function (_export, _context) {
   "use strict";
 
-  var interpolateRgbBasis;
+  var d3;
 
-  _export("default", function (scheme) {
-    return interpolateRgbBasis(scheme[scheme.length - 1]);
+  _export('default', function (scheme) {
+    return d3.interpolateRgbBasis(scheme[scheme.length - 1]);
   });
 
   return {
     setters: [function (_d) {
-      interpolateRgbBasis = _d.interpolateRgbBasis;
+      d3 = _d.default;
     }],
     execute: function () {}
   };

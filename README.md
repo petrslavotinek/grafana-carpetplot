@@ -63,3 +63,5 @@ Tested with InfluxDb data source.
 * 0.1.0
   * Possibility of custom colors.
   * Fixed compatibility with IE 11.
+* 0.1.1
+  * Fixed import of D3 library.

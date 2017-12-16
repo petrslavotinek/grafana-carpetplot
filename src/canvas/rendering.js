@@ -98,7 +98,6 @@ export default function link(scope, elem, attrs, ctrl) {
     chartWidth = width - yAxisWidth - margin.right;
 
     addXAxis();
-    // xAxisHeight = getXAxisHeight();
 
     if (!panel.yAxis.show) {
       carpet.select('.axis-y').selectAll('line').style('opacity', 0);
@@ -111,7 +110,6 @@ export default function link(scope, elem, attrs, ctrl) {
   }
 
   function addYAxis() {
-    //debugger
     yScale = d3.scaleTime()
       .domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')])
       .range([chartHeight, 0]);

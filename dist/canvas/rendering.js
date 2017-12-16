@@ -119,7 +119,6 @@ System.register(['d3', 'lodash', 'moment', 'jquery', '../fragments', './tooltip'
       chartWidth = width - yAxisWidth - margin.right;
 
       addXAxis();
-      // xAxisHeight = getXAxisHeight();
 
       if (!panel.yAxis.show) {
         carpet.select('.axis-y').selectAll('line').style('opacity', 0);
@@ -132,7 +131,6 @@ System.register(['d3', 'lodash', 'moment', 'jquery', '../fragments', './tooltip'
     }
 
     function addYAxis() {
-      //debugger
       yScale = d3.scaleTime().domain([moment().startOf('day').add(1, 'day'), moment().startOf('day')]).range([chartHeight, 0]);
 
       var yAxis = d3.axisLeft(yScale).ticks(getYAxisTicks()).tickFormat(function (value) {
