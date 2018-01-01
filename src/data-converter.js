@@ -50,6 +50,20 @@ const createConverter = (aggregateType, fragmentType) => {
       buckets: createArray(fragment.count)
     });
 
+    // Workaround for browsers that don't support ES2017 spec-compliant Object.values
+    // Polyfill from: https://github.com/tc39/proposal-object-values-entries/blob/master/polyfill.js
+    const reduce = Function.bind.call(Function.call, Array.prototype.reduce);
+    const isEnumerable = Function.bind.call(Function.call, Object.prototype.propertyIsEnumerable);
+    const concat = Function.bind.call(Function.call, Array.prototype.concat);
+    const keys = Reflect.ownKeys;
+
+    if (!Object.values) {
+        Object.values = function values(O) {
+              return reduce(keys(O), (v, k) => concat(v, typeof k === 'string' && isEnumerable(O, k) ? [O[k]] : []), []);
+                };
+    }
+    // End Workaround
+
     let bucket = createBucket(moment(from).local().startOf('day'));
     Object.values(data).forEach(({ time, values }) => {
       const timeLocal = time.local();
