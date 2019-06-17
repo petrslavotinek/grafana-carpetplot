@@ -230,11 +230,15 @@ System.register(['d3', 'lodash', 'moment', 'jquery', '../fragments', './tooltip'
         canvas.remove();
       }
 
-      canvas = d3.select($carpet[0]).insert('canvas', ':first-child').attr('width', chartWidth).attr('height', chartHeight).style('left', yAxisWidth + 'px').style('top', margin.top + 'px');
+      var dpr = window.devicePixelRatio || 1;
+
+      canvas = d3.select($carpet[0]).insert('canvas', ':first-child').attr('width', chartWidth * dpr).attr('height', chartHeight * dpr).style('width', chartWidth + 'px').style('height', chartHeight + 'px').style('left', yAxisWidth + 'px').style('top', margin.top + 'px');
 
       $canvas = $(canvas.node());
 
       context = canvas.node().getContext('2d');
+
+      context.scale(dpr, dpr);
     }
 
     function addPoints() {

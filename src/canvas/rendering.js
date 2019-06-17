@@ -233,16 +233,22 @@ export default function link(scope, elem, attrs, ctrl) {
       canvas.remove();
     }
 
+    var dpr = window.devicePixelRatio || 1;
+
     canvas = d3.select($carpet[0])
       .insert('canvas', ':first-child')
-      .attr('width', chartWidth)
-      .attr('height', chartHeight)
+      .attr('width', chartWidth * dpr)
+      .attr('height', chartHeight * dpr)
+      .style('width', `${chartWidth}px`)
+      .style('height', `${chartHeight}px`)
       .style('left', `${yAxisWidth}px`)
       .style('top', `${margin.top}px`);
 
     $canvas = $(canvas.node());
 
     context = canvas.node().getContext('2d');
+
+    context.scale(dpr, dpr);
   }
 
   function addPoints() {
