@@ -4,7 +4,8 @@
   "description": "Carpet plot panel plugin for grafana",
   "main": "README.md",
   "scripts": {
-    "build": "grunt"
+    "build": "grunt",
+    "check-package-upgrades": "npx npm-check-updates -i"
   },
   "author": "Petr Slavotinek",
   "license": "ISC",
