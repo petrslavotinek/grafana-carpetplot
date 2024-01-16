@@ -65,3 +65,6 @@ Tested with InfluxDb data source.
   * Fixed compatibility with IE 11.
 * 0.1.1
   * Fixed import of D3 library.
+* 0.2.0
+  * Compatibility with Grafana 10.2.3
+  * Update external dependencies
