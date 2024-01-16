@@ -1,6 +1,6 @@
-import d3 from 'd3';
 import $ from 'jquery';
 import moment from 'moment';
+import { select as d3Select } from 'd3';
 
 import { valueFormatter } from '../formatting';
 
@@ -40,7 +40,7 @@ class CarpetplotTooltip {
   }
 
   add() {
-    this.tooltip = d3.select('body')
+    this.tooltip = d3Select('body')
       .append('div')
       .attr('class', 'carpet-tooltip graph-tooltip grafana-tooltip');
   }

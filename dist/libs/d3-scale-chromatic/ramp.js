@@ -1,19 +1,19 @@
 'use strict';
 
 System.register(['d3'], function (_export, _context) {
-  "use strict";
+    "use strict";
 
-  var d3;
+    var interpolateRgbBasis;
 
-  _export('default', function (scheme) {
-    return d3.interpolateRgbBasis(scheme[scheme.length - 1]);
-  });
+    _export('default', function (scheme) {
+        return interpolateRgbBasis(scheme[scheme.length - 1]);
+    });
 
-  return {
-    setters: [function (_d) {
-      d3 = _d.default;
-    }],
-    execute: function () {}
-  };
+    return {
+        setters: [function (_d) {
+            interpolateRgbBasis = _d.interpolateRgbBasis;
+        }],
+        execute: function () {}
+    };
 });
 //# sourceMappingURL=ramp.js.map

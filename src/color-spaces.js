@@ -1,4 +1,4 @@
-import d3 from 'd3';
+import {interpolateCubehelix, interpolateHcl, interpolateHsl, interpolateLab, interpolateRgb} from "d3";
 
 const RGB = 'RGB';
 const HSL = 'HSL';
@@ -15,11 +15,11 @@ export const colorSpacesMap = [
 ];
 
 export const interpolationMap = {
-  [RGB]: d3.interpolateRgb,
-  [HSL]: d3.interpolateHsl,
-  [HCL]: d3.interpolateHcl,
-  [LAB]: d3.interpolateLab,
-  [CUBEHELIX]: d3.interpolateCubehelix
+  [RGB]: interpolateRgb,
+  [HSL]: interpolateHsl,
+  [HCL]: interpolateHcl,
+  [LAB]: interpolateLab,
+  [CUBEHELIX]: interpolateCubehelix
 };
 
 export default {

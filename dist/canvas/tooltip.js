@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['d3', 'jquery', 'moment', '../formatting'], function (_export, _context) {
+System.register(['jquery', 'moment', 'd3', '../formatting'], function (_export, _context) {
   "use strict";
 
-  var d3, $, moment, valueFormatter, _createClass, TOOLTIP_PADDING_X, TOOLTIP_PADDING_Y, CarpetplotTooltip;
+  var $, moment, d3Select, valueFormatter, _createClass, TOOLTIP_PADDING_X, TOOLTIP_PADDING_Y, CarpetplotTooltip;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -12,12 +12,12 @@ System.register(['d3', 'jquery', 'moment', '../formatting'], function (_export, 
   }
 
   return {
-    setters: [function (_d) {
-      d3 = _d.default;
-    }, function (_jquery) {
+    setters: [function (_jquery) {
       $ = _jquery.default;
     }, function (_moment) {
       moment = _moment.default;
+    }, function (_d) {
+      d3Select = _d.select;
     }, function (_formatting) {
       valueFormatter = _formatting.valueFormatter;
     }],
@@ -86,7 +86,7 @@ System.register(['d3', 'jquery', 'moment', '../formatting'], function (_export, 
         }, {
           key: 'add',
           value: function add() {
-            this.tooltip = d3.select('body').append('div').attr('class', 'carpet-tooltip graph-tooltip grafana-tooltip');
+            this.tooltip = d3Select('body').append('div').attr('class', 'carpet-tooltip graph-tooltip grafana-tooltip');
           }
         }, {
           key: 'destroy',

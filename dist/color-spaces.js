@@ -3,7 +3,7 @@
 System.register(['d3'], function (_export, _context) {
   "use strict";
 
-  var d3, _interpolationMap, RGB, HSL, HCL, LAB, CUBEHELIX, colorSpacesMap, interpolationMap;
+  var interpolateCubehelix, interpolateHcl, interpolateHsl, interpolateLab, interpolateRgb, _interpolationMap, RGB, HSL, HCL, LAB, CUBEHELIX, colorSpacesMap, interpolationMap;
 
   function _defineProperty(obj, key, value) {
     if (key in obj) {
@@ -22,7 +22,11 @@ System.register(['d3'], function (_export, _context) {
 
   return {
     setters: [function (_d) {
-      d3 = _d.default;
+      interpolateCubehelix = _d.interpolateCubehelix;
+      interpolateHcl = _d.interpolateHcl;
+      interpolateHsl = _d.interpolateHsl;
+      interpolateLab = _d.interpolateLab;
+      interpolateRgb = _d.interpolateRgb;
     }],
     execute: function () {
       RGB = 'RGB';
@@ -35,7 +39,7 @@ System.register(['d3'], function (_export, _context) {
 
       _export('colorSpacesMap', colorSpacesMap);
 
-      _export('interpolationMap', interpolationMap = (_interpolationMap = {}, _defineProperty(_interpolationMap, RGB, d3.interpolateRgb), _defineProperty(_interpolationMap, HSL, d3.interpolateHsl), _defineProperty(_interpolationMap, HCL, d3.interpolateHcl), _defineProperty(_interpolationMap, LAB, d3.interpolateLab), _defineProperty(_interpolationMap, CUBEHELIX, d3.interpolateCubehelix), _interpolationMap));
+      _export('interpolationMap', interpolationMap = (_interpolationMap = {}, _defineProperty(_interpolationMap, RGB, interpolateRgb), _defineProperty(_interpolationMap, HSL, interpolateHsl), _defineProperty(_interpolationMap, HCL, interpolateHcl), _defineProperty(_interpolationMap, LAB, interpolateLab), _defineProperty(_interpolationMap, CUBEHELIX, interpolateCubehelix), _interpolationMap));
 
       _export('interpolationMap', interpolationMap);
 
